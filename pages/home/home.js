@@ -20,6 +20,9 @@ Page({
   },
 
   async onShow() {
+    this.setTabBarVisible(
+      !this.data.showMahjongCreate && !this.data.showMahjongJoin && !this.data.showPokerCreate,
+    );
     if (!app.globalData.user) {
       await this.loadMahjongUser();
       return;
@@ -61,28 +64,39 @@ Page({
 
   preventGuideClose() {},
 
+  setTabBarVisible(visible) {
+    const tabBar = this.getTabBar?.();
+    if (tabBar) tabBar.setData({ hidden: !visible });
+  },
+
   openMahjongCreate() {
     this.setData({ showMahjongCreate: true });
+    this.setTabBarVisible(false);
   },
 
   closeMahjongCreate() {
     this.setData({ showMahjongCreate: false });
+    this.setTabBarVisible(true);
   },
 
   openMahjongJoin() {
     this.setData({ showMahjongJoin: true });
+    this.setTabBarVisible(false);
   },
 
   closeMahjongJoin() {
     this.setData({ showMahjongJoin: false });
+    this.setTabBarVisible(true);
   },
 
   openPokerCreate() {
     this.setData({ showPokerCreate: true });
+    this.setTabBarVisible(false);
   },
 
   closePokerCreate() {
     this.setData({ showPokerCreate: false });
+    this.setTabBarVisible(true);
   },
 
   preventSheetClose() {},

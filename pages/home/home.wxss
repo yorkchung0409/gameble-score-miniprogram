@@ -1,8 +1,8 @@
-.page { min-height: 100vh; box-sizing: border-box; padding: 42rpx 32rpx 210rpx; color: #222B26; }
-.page-toolbar { display: flex; justify-content: flex-end; height: 64rpx; margin-bottom: 46rpx; }
+.page { position: relative; min-height: 100vh; box-sizing: border-box; padding: 36rpx 32rpx 210rpx; color: #222B26; }
+.page-toolbar { position: absolute; top: 28rpx; right: 32rpx; height: 52rpx; }
 .guide-button, .guide-close { display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; }
 .guide-button::after, .guide-close::after { border: 0; }
-.guide-button { width: 64rpx; height: 64rpx; border: 1rpx solid #C8D4C9; border-radius: 50%; background: #FFFFFF; color: #1E7A46; font-size: 40rpx; font-weight: 700; line-height: 64rpx; }
+.guide-button { width: 52rpx; height: 52rpx; border: 1rpx solid #C8D4C9; border-radius: 50%; background: #FFFFFF; color: #1E7A46; font-size: 32rpx; font-weight: 700; line-height: 52rpx; }
 .entry-section { margin-bottom: 64rpx; }
 .poker-section { margin-bottom: 0; }
 .section-heading { display: block; margin: 0 0 24rpx; font-size: 40rpx; font-weight: 700; }
@@ -12,8 +12,8 @@
 .mahjong-button { background: #1E7A46; color: #FFFFFF; }
 .poker-button { background: #276747; color: #FFFFFF; }
 .secondary-action { border: 1rpx solid #D2DCD2; background: #FFFFFF; color: #2C3A31; }
-.sheet-mask { position: fixed; z-index: 1000; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: flex-end; background: rgba(22, 31, 25, 0.46); }
-.action-sheet { width: 100%; box-sizing: border-box; padding: 34rpx 32rpx calc(34rpx + env(safe-area-inset-bottom)); border-radius: 16rpx 16rpx 0 0; background: #FFFFFF; }
+.sheet-mask { position: fixed; z-index: 1000; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; padding: 48rpx; box-sizing: border-box; background: rgba(22, 31, 25, 0.46); }
+.action-sheet { width: 100%; max-width: 640rpx; box-sizing: border-box; padding: 36rpx 30rpx; border-radius: 12rpx; background: #FFFFFF; }
 .sheet-title { display: block; margin-bottom: 28rpx; color: #222B26; font-size: 38rpx; font-weight: 700; }
 .sheet-actions { display: flex; gap: 18rpx; }
 .sheet-actions button { flex: 1; min-width: 0; min-height: 96rpx; margin: 0; border-radius: 8rpx; font-size: 32rpx; font-weight: 700; line-height: 96rpx; }

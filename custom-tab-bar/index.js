@@ -1,6 +1,7 @@
 Component({
   data: {
     selected: 0,
+    hidden: false,
     items: [
       { pagePath: 'pages/home/home', text: '首页' },
       { pagePath: 'pages/profile/profile', text: '我的' },
