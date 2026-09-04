@@ -1,5 +1,5 @@
-.tab-bar { position: fixed; z-index: 100; right: 0; bottom: 0; left: 0; display: flex; height: 116rpx; box-sizing: content-box; padding-bottom: env(safe-area-inset-bottom); border-top: 1rpx solid #DDE4DD; background: #FFFFFF; }
-.tab-item { position: relative; display: flex; flex: 1; align-items: center; justify-content: center; min-width: 0; }
+.tab-bar { position: fixed; z-index: 100; right: 0; bottom: 0; left: 0; display: flex; height: 116rpx; box-sizing: content-box; padding-bottom: env(safe-area-inset-bottom); border-top: 1rpx solid #DDE4DD; background: #FFFFFF; pointer-events: none; }
+.tab-item { position: relative; display: flex; flex: 1; align-items: center; justify-content: center; min-width: 0; pointer-events: auto; }
 .tab-label { color: #58665D; font-size: 34rpx; font-weight: 600; line-height: 116rpx; }
 .tab-item.active .tab-label { color: #167443; font-weight: 700; }
 .tab-indicator { position: absolute; right: 40rpx; bottom: 14rpx; left: 40rpx; height: 6rpx; border-radius: 3rpx; background: #1E7A46; }
