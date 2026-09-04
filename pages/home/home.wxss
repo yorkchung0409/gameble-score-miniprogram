@@ -19,16 +19,16 @@
 .sheet-actions button { flex: 1; min-width: 0; min-height: 96rpx; margin: 0; border-radius: 8rpx; font-size: 32rpx; font-weight: 700; line-height: 96rpx; }
 .sheet-cancel { background: #E8ECE6; color: #2C3A31; }
 .sheet-confirm { color: #FFFFFF; }
-.guide-mask { position: fixed; z-index: 1000; top: 0; right: 0; bottom: 0; left: 0; display: flex; justify-content: center; align-items: center; padding: 48rpx; box-sizing: border-box; background: rgba(22, 31, 25, 0.5); }
-.guide-modal { width: 100%; max-height: 78vh; overflow: hidden; border: 1rpx solid #E6EAE2; border-radius: 8rpx; background: #FFFFFF; }
-.guide-header { display: flex; justify-content: space-between; align-items: center; min-height: 94rpx; padding: 0 28rpx; border-bottom: 1rpx solid #E6EAE2; }
-.guide-dialog-title { color: #222B26; font-size: 36rpx; font-weight: 700; }
+.guide-mask { position: fixed; z-index: 1000; top: 0; right: 0; bottom: 0; left: 0; display: flex; justify-content: center; align-items: center; padding: 28rpx; box-sizing: border-box; background: rgba(22, 31, 25, 0.5); }
+.guide-modal { width: 100%; max-height: 90vh; overflow: hidden; border: 1rpx solid #E6EAE2; border-radius: 8rpx; background: #FFFFFF; }
+.guide-header { display: flex; justify-content: space-between; align-items: center; min-height: 82rpx; padding: 0 24rpx; border-bottom: 1rpx solid #E6EAE2; }
+.guide-dialog-title { color: #222B26; font-size: 34rpx; font-weight: 700; }
 .guide-close { width: 56rpx; height: 56rpx; background: transparent; color: #6B7A70; font-size: 48rpx; font-weight: 300; line-height: 52rpx; }
-.guide-body { max-height: 62vh; padding: 28rpx; box-sizing: border-box; }
-.guide-section { margin-bottom: 30rpx; }
+.guide-body { max-height: 79vh; padding: 20rpx 24rpx; box-sizing: border-box; }
+.guide-section { margin-bottom: 18rpx; }
 .guide-section-last { margin-bottom: 0; }
-.guide-section-title { display: block; margin-bottom: 14rpx; color: #1E7A46; font-size: 32rpx; font-weight: 700; }
+.guide-section-title { display: block; margin-bottom: 8rpx; color: #1E7A46; font-size: 28rpx; font-weight: 700; }
 .guide-section-title-common { color: #9A7919; }
-.guide-item { display: flex; align-items: flex-start; gap: 10rpx; margin-top: 12rpx; color: #222B26; font-size: 29rpx; line-height: 1.6; }
-.guide-bullet { flex: 0 0 16rpx; color: #B08D1E; font-size: 34rpx; line-height: 1.35; }
+.guide-item { display: flex; align-items: flex-start; gap: 8rpx; margin-top: 7rpx; color: #222B26; font-size: 25rpx; line-height: 1.45; }
+.guide-bullet { flex: 0 0 14rpx; color: #B08D1E; font-size: 28rpx; line-height: 1.3; }
 .guide-bullet-common { color: #B08D1E; }

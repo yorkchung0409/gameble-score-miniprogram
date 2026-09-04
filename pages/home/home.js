@@ -56,10 +56,12 @@ Page({
 
   openGuide() {
     this.setData({ guideOpen: true });
+    this.setTabBarVisible(false);
   },
 
   closeGuide() {
     this.setData({ guideOpen: false });
+    this.setTabBarVisible(true);
   },
 
   preventGuideClose() {},

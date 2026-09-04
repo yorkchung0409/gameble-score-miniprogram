@@ -57,26 +57,21 @@
     <scroll-view class="guide-body" scroll-y>
       <view class="guide-section">
         <text class="guide-section-title">麻将</text>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>进入房间即成为成员，点头像即可互相转账。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>茶水费是虚拟账户，用于收取茶位费。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>房主可切换普通模式和坐下模式；坐下模式需入座东南西北四个位置后才能转账。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>普通模式切换坐下模式时需玩家自行入座；切回普通模式时需全部离座。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>转错账可冲正，但只能冲正自己付款的记录。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>房间超过 30 分钟无转账会自动解散，账目归档保留。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>退出房间只退出本局，可随时再次进入，历史余额会自动接上。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>进入房间即成为成员，点头像可互相转账；茶水费为虚拟账户。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>房主可在普通、坐下模式间切换；坐下模式需四家入座，切换时按提示入座或离座。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>转错账只能冲正自己付款的记录；30 分钟无转账会自动解散，账目仍会归档。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>退出只离开本局，可再次进入，历史余额会自动接上。</text></view>
       </view>
 
       <view class="guide-section">
         <text class="guide-section-title">德州</text>
         <view class="guide-item"><text class="guide-bullet">·</text><text>账本是创建者个人使用的记账本，不与他人协作。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>新建牌局时记录每位玩家的买入和结余，系统会自动计算净盈亏。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>保存后展示日期、人数和流水，点击记录可展开明细。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>记录玩家买入和结余即可自动计算净盈亏；历史可查看日期、人数和明细。</text></view>
       </view>
 
       <view class="guide-section guide-section-last">
         <text class="guide-section-title guide-section-title-common">通用</text>
-        <view class="guide-item"><text class="guide-bullet guide-bullet-common">·</text><text>麻将房间数据保存在云端，成员可实时同步。</text></view>
-        <view class="guide-item"><text class="guide-bullet guide-bullet-common">·</text><text>更换设备后使用同一微信账号即可同步数据。</text></view>
+        <view class="guide-item"><text class="guide-bullet guide-bullet-common">·</text><text>麻将房数据保存在云端，成员实时同步；更换设备后使用同一微信即可同步。</text></view>
         <view class="guide-item"><text class="guide-bullet guide-bullet-common">·</text><text>历史房间、账本和个人战绩可在“我的”查看。</text></view>
       </view>
     </scroll-view>
