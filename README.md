@@ -5,7 +5,7 @@
 项目通过微信云托管私有链路访问后端，不需要在小程序后台配置服务器域名。
 
 1. 在 `project.config.json` 填入你的小程序 AppID。
-2. `app.js` 中的 `CLOUD_ENV` 已配置为 `cloudbase-d8guua73779173a0c`，`CLOUD_SERVICE` 已配置为 `express-drsy`。它们必须分别与云开发环境 ID 和云托管服务名一致。
+2. `app.js` 中的 `CLOUD_ENV` 已配置为 `prod-d4giemw445109b899`，`CLOUD_SERVICE` 已配置为 `express-drsy`。它们必须分别与云开发环境 ID 和云托管服务名一致。
 3. 将 [gameble-score](https://github.com/yorkchung0409/gameble-score) 仓库部署到同一云开发环境的 `express-drsy` 服务，容器端口设为 `3000`，并关闭公网访问。
 4. 在云托管服务的环境变量中配置 `DATABASE_URL`，值为该环境 PostgreSQL 数据库的连接地址。应用启动时会自动执行幂等建表。
 

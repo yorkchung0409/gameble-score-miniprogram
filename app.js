@@ -1,4 +1,4 @@
-const CLOUD_ENV = 'cloudbase-d8guua73779173a0c';
+const CLOUD_ENV = 'prod-d4giemw445109b899';
 const CLOUD_SERVICE = 'express-drsy';
 
 function request({ path, method = 'GET', data }) {
