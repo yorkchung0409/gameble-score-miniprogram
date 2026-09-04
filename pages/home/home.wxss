@@ -1,13 +1,12 @@
 .page { min-height: 100vh; box-sizing: border-box; padding: 36rpx 32rpx 72rpx; color: #222B26; }
-.identity-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 24rpx; margin: 10rpx 0 38rpx; }
-.brand { display: flex; flex-direction: column; gap: 8rpx; }
-.brand-title { font-size: 44rpx; font-weight: 700; line-height: 1.2; }
-.brand-caption, .section-note, .visit-code { color: #6B7A70; font-size: 24rpx; }
-.user-chip { display: flex; align-items: center; gap: 12rpx; max-width: 260rpx; overflow: hidden; white-space: nowrap; font-size: 26rpx; }
-.avatar { width: 58rpx; height: 58rpx; flex: 0 0 58rpx; display: flex; justify-content: center; align-items: center; border-radius: 50%; background: #1E7A46; color: #FFFFFF; font-weight: 700; }
+.section-note, .visit-code { color: #6B7A70; font-size: 24rpx; }
 .game-switch { display: flex; height: 84rpx; margin-bottom: 42rpx; padding: 6rpx; box-sizing: border-box; background: #E8ECE6; border-radius: 10rpx; }
 .game-tab { flex: 1; display: flex; justify-content: center; align-items: center; color: #6B7A70; font-size: 29rpx; font-weight: 600; }
 .game-tab.active { background: #FFFFFF; color: #1E7A46; box-shadow: 0 1rpx 4rpx rgba(34, 43, 38, 0.12); }
+.usage-guide { margin: 0 0 42rpx; padding: 24rpx 0; border-top: 1rpx solid #DCE3DC; border-bottom: 1rpx solid #DCE3DC; }
+.guide-title { display: block; margin-bottom: 18rpx; font-size: 30rpx; font-weight: 700; }
+.guide-step { display: flex; align-items: flex-start; gap: 14rpx; margin-top: 14rpx; color: #526158; font-size: 26rpx; line-height: 1.55; }
+.guide-index { width: 34rpx; height: 34rpx; flex: 0 0 34rpx; display: flex; justify-content: center; align-items: center; border-radius: 50%; background: #E5F1E9; color: #1E7A46; font-size: 22rpx; font-weight: 700; line-height: 34rpx; }
 .section-heading { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 18rpx; font-size: 32rpx; font-weight: 700; }
 .section-heading.compact { margin-top: 42rpx; }
 .form-block, .profile-block { padding: 28rpx; border: 1rpx solid #E6EAE2; border-radius: 8rpx; background: #FFFFFF; }

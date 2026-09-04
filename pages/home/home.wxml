@@ -1,21 +1,17 @@
 <view class="page">
-  <view class="identity-row">
-    <view class="brand">
-      <text class="brand-title">牌局记账</text>
-      <text class="brand-caption">和熟人一起把每一局记清楚</text>
-    </view>
-    <view wx:if="{{user}}" class="user-chip">
-      <view class="avatar">{{userInitial}}</view>
-      <text>{{user.name}}</text>
-    </view>
-  </view>
-
   <view class="game-switch" role="tablist">
     <view class="game-tab {{activeGame === 'poker' ? 'active' : ''}}" data-game="poker" bindtap="switchGame">德州扑克</view>
     <view class="game-tab {{activeGame === 'mahjong' ? 'active' : ''}}" data-game="mahjong" bindtap="switchGame">麻将</view>
   </view>
 
   <block wx:if="{{activeGame === 'poker'}}">
+    <view class="usage-guide">
+      <text class="guide-title">使用说明</text>
+      <view class="guide-step"><text class="guide-index">1</text><text>新建账本，或输入账本码打开已有账本</text></view>
+      <view class="guide-step"><text class="guide-index">2</text><text>在账本内添加参与者和买入金额</text></view>
+      <view class="guide-step"><text class="guide-index">3</text><text>录入每局结算，自动汇总总盈亏</text></view>
+    </view>
+
     <view class="section-heading">
       <text>新建德州账本</text>
       <text class="section-note">创建后可分享账本码</text>
@@ -46,6 +42,13 @@
   </block>
 
   <block wx:else>
+    <view class="usage-guide">
+      <text class="guide-title">使用说明</text>
+      <view class="guide-step"><text class="guide-index">1</text><text>创建房间，或输入房间码加入牌局</text></view>
+      <view class="guide-step"><text class="guide-index">2</text><text>在房间内设置玩家和本局金额</text></view>
+      <view class="guide-step"><text class="guide-index">3</text><text>录入每局结算，随时查看统计</text></view>
+    </view>
+
     <view wx:if="{{needsNickname}}" class="profile-block">
       <text class="block-title">设置麻将昵称</text>
       <input type="nickname" value="{{nickname}}" bindinput="onNicknameInput" placeholder="输入昵称" class="input" maxlength="30" />

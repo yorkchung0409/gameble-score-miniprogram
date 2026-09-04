@@ -4,7 +4,6 @@ Page({
   data: {
     activeGame: 'poker',
     user: null,
-    userInitial: '',
     nickname: '',
     needsNickname: false,
     savingProfile: false,
@@ -40,7 +39,6 @@ Page({
       const user = result.user;
       this.setData({
         user,
-        userInitial: (user.name || '?').slice(0, 1),
         nickname: user.name === '微信用户' ? '' : user.name,
         needsNickname: user.name === '微信用户',
       });
@@ -119,7 +117,6 @@ Page({
       app.globalData.user = result.user;
       this.setData({
         user: result.user,
-        userInitial: result.user.name.slice(0, 1),
         nickname: result.user.name,
         needsNickname: false,
       });
