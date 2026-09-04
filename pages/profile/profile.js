@@ -63,8 +63,12 @@ Page({
         nickname: user.name === '微信用户' ? '' : user.name,
         needsNickname: user.name === '微信用户',
         summary: this.decorateSummary(dashboard.summary),
-        pokerLedgers: dashboard.pokerLedgers.map((ledger) => this.decoratePokerLedger(ledger)),
-        mahjongRooms: dashboard.mahjongRooms.map((room) => this.decorateMahjongRoom(room)),
+        pokerLedgers: dashboard.pokerLedgers
+          .map((ledger) => this.decoratePokerLedger(ledger))
+          .slice(0, 1),
+        mahjongRooms: dashboard.mahjongRooms
+          .map((room) => this.decorateMahjongRoom(room))
+          .slice(0, 1),
         opponents: dashboard.opponents.map((opponent) => ({
           ...decorateNet(opponent),
           lastPlayedDisplay: displayDate(opponent.lastPlayedAt),
@@ -143,6 +147,11 @@ Page({
     if (roomCode) wx.navigateTo({ url: `/pages/room/room?roomCode=${roomCode}` });
   },
 
+  openHistory(event) {
+    const type = event.currentTarget.dataset.type || 'all';
+    wx.navigateTo({ url: `/pages/history/history?type=${type}` });
+  },
+
   async openOpponent(event) {
     const opponentId = event.currentTarget.dataset.id;
     if (!opponentId) return;
@@ -154,6 +163,8 @@ Page({
           ...detail,
           records: detail.records.map((record) => ({
             ...decorateNet(record),
+            amountDisplay: Number(record.amount || 0).toFixed(2),
+            resultLabel: Number(record.netProfit || 0) > 0 ? '赢得' : '输给',
             createdDisplay: displayDate(record.createdAt),
           })),
         },

@@ -47,7 +47,7 @@
   </view>
   <view wx:else class="empty-state">还没有对手战绩</view>
 
-  <view class="section-title"><text>历史扑克账本</text><text class="section-count">{{summary.poker.ledgerCount}} 本</text></view>
+  <view class="section-title"><text>历史扑克账本</text><view class="section-tools"><text class="section-count">{{summary.poker.ledgerCount}} 本</text><text wx:if="{{pokerLedgers.length}}" class="section-action" data-type="poker" bindtap="openHistory">查看全部</text></view></view>
   <view wx:if="{{pokerLedgers.length}}" class="history-list">
     <view wx:for="{{pokerLedgers}}" wx:key="id" class="history-row" data-code="{{item.room.roomCode}}" bindtap="openPokerLedger">
       <view class="history-main">
@@ -60,7 +60,7 @@
   </view>
   <view wx:else class="empty-state">还没有德州账本</view>
 
-  <view class="section-title"><text>历史麻将房</text><text class="section-count">{{summary.mahjong.roomCount}} 房</text></view>
+  <view class="section-title"><text>历史麻将房</text><view class="section-tools"><text class="section-count">{{summary.mahjong.roomCount}} 房</text><text wx:if="{{mahjongRooms.length}}" class="section-action" data-type="mahjong" bindtap="openHistory">查看全部</text></view></view>
   <view wx:if="{{mahjongRooms.length}}" class="history-list">
     <view wx:for="{{mahjongRooms}}" wx:key="roomCode" class="history-row" data-code="{{item.roomCode}}" bindtap="openMahjongRoom">
       <view class="history-main">
@@ -83,8 +83,8 @@
       <view wx:if="{{opponentLoading}}" class="sheet-loading">加载中...</view>
       <block wx:elif="{{opponentDetail.records.length}}">
         <view wx:for="{{opponentDetail.records}}" wx:key="id" class="record-row">
-          <view><text class="record-room">{{item.roomName}}</text><text class="record-date">{{item.createdDisplay}}</text></view>
-          <text class="{{item.netClass}}">{{item.netDisplay}}</text>
+          <view><text class="record-room">{{item.roomName}}（{{item.roomCode}}）</text><text class="record-date">{{item.createdDisplay}}</text></view>
+          <view class="record-result"><text class="{{item.netClass}}">{{item.resultLabel}} {{opponentDetail.opponentName}}</text><text class="record-amount">{{item.amountDisplay}}</text></view>
         </view>
       </block>
       <view wx:else class="sheet-loading">没有有效的结算记录</view>

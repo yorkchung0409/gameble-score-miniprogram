@@ -1,0 +1,46 @@
+<view wx:if="{{loading}}" class="loading">加载历史记录...</view>
+
+<view wx:elif="{{loadError}}" class="load-failure">
+  <text>{{loadError}}</text>
+  <button class="retry-button" bindtap="loadHistory">重新加载</button>
+</view>
+
+<view wx:else class="page">
+  <view class="page-title">历史记录</view>
+  <view class="segmented">
+    <view class="segment {{activeType == 'all' ? 'selected' : ''}}" data-type="all" bindtap="switchType">全部</view>
+    <view class="segment {{activeType == 'poker' ? 'selected' : ''}}" data-type="poker" bindtap="switchType">扑克账本</view>
+    <view class="segment {{activeType == 'mahjong' ? 'selected' : ''}}" data-type="mahjong" bindtap="switchType">麻将房</view>
+  </view>
+
+  <block wx:if="{{activeType == 'all' || activeType == 'poker'}}">
+    <view class="section-title"><text>扑克账本</text><text class="section-count">{{pokerLedgers.length}} 本</text></view>
+    <view wx:if="{{pokerLedgers.length}}" class="history-list">
+      <view wx:for="{{pokerLedgers}}" wx:key="id" class="history-row" data-code="{{item.room.roomCode}}" bindtap="openPokerLedger">
+        <view class="history-main">
+          <text class="history-name">{{item.room.roomName}}</text>
+          <text class="history-code">{{item.room.roomCode}}</text>
+          <text wx:if="{{item.selfPlayerId}}" class="history-note">本人 {{item.myGameCount}} 局 · 更新于 {{item.updatedDisplay}}</text>
+          <text wx:else class="history-note">尚未设置本账本中的我 · 更新于 {{item.updatedDisplay}}</text>
+        </view>
+        <text class="{{item.netClass}} history-value">{{item.netDisplay}}</text>
+      </view>
+    </view>
+    <view wx:else class="empty-state">还没有德州账本</view>
+  </block>
+
+  <block wx:if="{{activeType == 'all' || activeType == 'mahjong'}}">
+    <view class="section-title"><text>麻将房</text><text class="section-count">{{mahjongRooms.length}} 房</text></view>
+    <view wx:if="{{mahjongRooms.length}}" class="history-list">
+      <view wx:for="{{mahjongRooms}}" wx:key="roomCode" class="history-row" data-code="{{item.roomCode}}" bindtap="openMahjongRoom">
+        <view class="history-main">
+          <text class="history-name">{{item.roomName}}</text>
+          <text class="history-code">{{item.roomCode}}</text>
+          <text class="history-note"><text class="room-state {{item.roomStateClass}}">{{item.roomState}}</text> · 最近活动 {{item.lastActivityDisplay}}</text>
+        </view>
+        <text class="{{item.netClass}} history-value">{{item.netDisplay}}</text>
+      </view>
+    </view>
+    <view wx:else class="empty-state">还没有麻将房记录</view>
+  </block>
+</view>

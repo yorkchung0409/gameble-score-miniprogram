@@ -2,6 +2,7 @@
   "pages": [
     "pages/home/home",
     "pages/profile/profile",
+    "pages/history/history",
     "pages/poker/poker",
     "pages/room/room"
   ],
