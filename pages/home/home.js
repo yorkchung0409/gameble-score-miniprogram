@@ -20,6 +20,8 @@ Page({
   },
 
   async onShow() {
+    const tabBar = this.getTabBar?.();
+    if (tabBar) tabBar.setData({ selected: 0 });
     this.setTabBarVisible(
       !this.data.showMahjongCreate && !this.data.showMahjongJoin && !this.data.showPokerCreate,
     );

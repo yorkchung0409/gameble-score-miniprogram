@@ -41,6 +41,8 @@ Page({
   },
 
   async onShow() {
+    const tabBar = this.getTabBar?.();
+    if (tabBar) tabBar.setData({ selected: 1 });
     await this.loadProfile();
   },
 
