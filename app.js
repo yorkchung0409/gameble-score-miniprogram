@@ -78,23 +78,35 @@ App({
     return result;
   },
 
-  async getPersonalDashboard() {
+  async getPersonalDashboard(options = {}) {
+    const historyLimit = Number.isInteger(options.historyLimit) ? options.historyLimit : 1;
+    const pokerOffset = Number.isInteger(options.pokerOffset) ? options.pokerOffset : 0;
+    const mahjongOffset = Number.isInteger(options.mahjongOffset) ? options.mahjongOffset : 0;
     const [summary, poker, mahjong, opponents] = await Promise.all([
       request({ path: '/api/mini/me/summary' }),
-      request({ path: '/api/mini/me/poker-ledgers' }),
-      request({ path: '/api/mini/me/mahjong-rooms' }),
+      request({ path: `/api/mini/me/poker-ledgers?limit=${historyLimit}&offset=${pokerOffset}` }),
+      request({ path: `/api/mini/me/mahjong-rooms?limit=${historyLimit}&offset=${mahjongOffset}` }),
       request({ path: '/api/mini/me/mahjong-opponents' }),
     ]);
     return {
       summary,
       pokerLedgers: poker.ledgers || [],
+      pokerPage: { total: poker.total || 0, hasMore: Boolean(poker.hasMore), nextOffset: poker.nextOffset || 0 },
       mahjongRooms: mahjong.rooms || [],
+      mahjongPage: { total: mahjong.total || 0, hasMore: Boolean(mahjong.hasMore), nextOffset: mahjong.nextOffset || 0 },
       opponents: opponents.opponents || [],
     };
   },
 
-  async getPersonalPokerLedgers() {
-    const result = await request({ path: '/api/mini/me/poker-ledgers' });
-    return result.ledgers || [];
+  async getPersonalPokerLedgers(options = {}) {
+    const limit = Number.isInteger(options.limit) ? options.limit : 20;
+    const offset = Number.isInteger(options.offset) ? options.offset : 0;
+    return request({ path: `/api/mini/me/poker-ledgers?limit=${limit}&offset=${offset}` });
+  },
+
+  async getPersonalMahjongRooms(options = {}) {
+    const limit = Number.isInteger(options.limit) ? options.limit : 20;
+    const offset = Number.isInteger(options.offset) ? options.offset : 0;
+    return request({ path: `/api/mini/me/mahjong-rooms?limit=${limit}&offset=${offset}` });
   },
 });

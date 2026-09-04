@@ -54,7 +54,7 @@ Page({
   async loadProfile() {
     try {
       const login = await app.login();
-      const dashboard = await app.getPersonalDashboard();
+      const dashboard = await app.getPersonalDashboard({ historyLimit: 1 });
       const user = dashboard.summary.user || login.user;
       this.setData({
         loading: false,

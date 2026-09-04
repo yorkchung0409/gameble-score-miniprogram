@@ -27,6 +27,7 @@
       </view>
     </view>
     <view wx:else class="empty-state">还没有德州账本</view>
+    <button wx:if="{{pokerHasMore}}" class="load-more" data-type="poker" bindtap="loadMore" loading="{{loadingMore}}">加载更多</button>
   </block>
 
   <block wx:if="{{activeType == 'all' || activeType == 'mahjong'}}">
@@ -42,5 +43,6 @@
       </view>
     </view>
     <view wx:else class="empty-state">还没有麻将房记录</view>
+    <button wx:if="{{mahjongHasMore}}" class="load-more" data-type="mahjong" bindtap="loadMore" loading="{{loadingMore}}">加载更多</button>
   </block>
 </view>
