@@ -43,6 +43,7 @@ Page({
     editingGameId: '',
     gameDate: today(),
     gameRows: [],
+    availableGamePlayers: [],
     savingGame: false,
   },
 
@@ -284,12 +285,11 @@ Page({
     const gamePlayerMap = new Map(
       ((game && game.players) || []).map((player) => [player.playerId, player]),
     );
-    const gameRows = this.data.detail.players.map((player) => {
+    const gameRows = this.data.detail.players.filter((player) => gamePlayerMap.has(player.id)).map((player) => {
       const previous = gamePlayerMap.get(player.id);
       return {
         playerId: player.id,
         playerName: player.name,
-        selected: Boolean(previous),
         buyIn: previous ? String(previous.buyIn) : '',
         balance: previous ? String(previous.balance) : '',
       };
@@ -299,20 +299,44 @@ Page({
       editingGameId: gameId,
       gameDate: (game && game.gameDate) || today(),
       gameRows,
+      availableGamePlayers: this.data.detail.players.filter(
+        (player) => !gameRows.some((row) => row.playerId === player.id),
+      ),
     });
   },
 
   closeGameEditor() {
-    this.setData({ showGameEditor: false, editingGameId: '', gameRows: [] });
+    this.setData({ showGameEditor: false, editingGameId: '', gameRows: [], availableGamePlayers: [] });
   },
 
   onGameDateChange(event) {
     this.setData({ gameDate: event.detail.value });
   },
 
-  toggleGamePlayer(event) {
+  onAddGamePlayer(event) {
+    const index = Number(event.detail.value);
+    const player = this.data.availableGamePlayers[index];
+    if (!player) return;
+    const gameRows = [
+      ...this.data.gameRows,
+      { playerId: player.id, playerName: player.name, buyIn: '', balance: '' },
+    ];
+    this.setData({
+      gameRows,
+      availableGamePlayers: this.data.availableGamePlayers.filter((_, itemIndex) => itemIndex !== index),
+    });
+  },
+
+  removeGamePlayer(event) {
     const index = Number(event.currentTarget.dataset.index);
-    this.setData({ [`gameRows[${index}].selected`]: event.detail.value });
+    const removed = this.data.gameRows[index];
+    if (!removed) return;
+    const gameRows = this.data.gameRows.filter((_, rowIndex) => rowIndex !== index);
+    const availableGamePlayers = [...this.data.availableGamePlayers, {
+      id: removed.playerId,
+      name: removed.playerName,
+    }];
+    this.setData({ gameRows, availableGamePlayers });
   },
 
   onGameBuyInInput(event) {
@@ -326,7 +350,7 @@ Page({
   },
 
   async saveGame() {
-    const selectedRows = this.data.gameRows.filter((row) => row.selected);
+    const selectedRows = this.data.gameRows;
     if (selectedRows.length === 0) {
       wx.showToast({ title: '请至少选择一位人员', icon: 'none' });
       return;

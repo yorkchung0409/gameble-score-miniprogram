@@ -111,11 +111,12 @@
 
 <view wx:if="{{showGameEditor}}" class="overlay">
   <view class="sheet game-editor">
-    <view class="sheet-heading"><text class="sheet-title">{{editingGameId ? '编辑牌局' : '记录一局'}}</text><text class="sheet-note">未勾选的人员不计入本局</text></view>
+    <view class="sheet-heading"><text class="sheet-title">{{editingGameId ? '编辑牌局' : '记录一局'}}</text><text class="sheet-note">从名单添加本局人员</text></view>
     <picker mode="date" value="{{gameDate}}" bindchange="onGameDateChange" class="date-picker"><view>{{gameDate}}</view></picker>
+    <picker wx:if="{{availableGamePlayers.length}}" range="{{availableGamePlayers}}" range-key="name" bindchange="onAddGamePlayer" class="add-game-player"><view>+ 添加本局人员</view></picker>
+    <view wx:if="{{!gameRows.length}}" class="no-game-players">请从名单添加本局参与人员</view>
     <scroll-view scroll-y class="player-editor-list">
       <view wx:for="{{gameRows}}" wx:key="playerId" class="editor-row">
-        <switch checked="{{item.selected}}" color="#1E7A46" data-index="{{index}}" bindchange="toggleGamePlayer" />
         <view class="editor-fields">
           <text class="editor-name">{{item.playerName}}</text>
           <view class="amount-inputs">
@@ -123,6 +124,7 @@
             <input type="digit" value="{{item.balance}}" data-index="{{index}}" bindinput="onGameBalanceInput" placeholder="结余" class="small-input" />
           </view>
         </view>
+        <button class="remove-game-player" data-index="{{index}}" bindtap="removeGamePlayer">移除</button>
       </view>
     </scroll-view>
     <view class="sheet-actions">

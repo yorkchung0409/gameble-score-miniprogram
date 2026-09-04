@@ -60,7 +60,10 @@
 .sheet-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18rpx; }
 .sheet-heading .sheet-title { margin-bottom: 24rpx; }.sheet-note { color: #6B7A70; font-size: 22rpx; }
 .date-picker { box-sizing: border-box; height: 78rpx; padding: 22rpx 18rpx; border: 1rpx solid #DCE3DC; border-radius: 8rpx; color: #222B26; font-size: 27rpx; }
+.add-game-player { height: 78rpx; box-sizing: border-box; margin-top: 16rpx; padding: 22rpx 18rpx; border: 1rpx solid #CFE2D4; border-radius: 8rpx; background: #F1F8F2; color: #1E7A46; font-size: 27rpx; font-weight: 700; }
+.no-game-players { padding: 26rpx 0 12rpx; color: #6B7A70; text-align: center; font-size: 24rpx; }
 .player-editor-list { max-height: 660rpx; margin-top: 20rpx; }
-.editor-row { display: flex; align-items: center; gap: 16rpx; padding: 16rpx 2rpx; border-bottom: 1rpx solid #EEF1ED; }
+.editor-row { display: flex; align-items: center; gap: 12rpx; padding: 16rpx 2rpx; border-bottom: 1rpx solid #EEF1ED; }
 .editor-fields { flex: 1; min-width: 0; }.editor-name { display: block; margin-bottom: 10rpx; font-size: 27rpx; font-weight: 600; }
 .amount-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12rpx; }.small-input { height: 66rpx; min-width: 0; box-sizing: border-box; padding: 0 14rpx; border: 1rpx solid #DCE3DC; border-radius: 6rpx; font-size: 24rpx; }
+.remove-game-player { flex: 0 0 auto; margin: 0; padding: 0 8rpx; background: transparent; color: #A0443E; font-size: 22rpx; line-height: 48rpx; }
