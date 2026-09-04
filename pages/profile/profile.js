@@ -152,29 +152,22 @@ Page({
     wx.navigateTo({ url: `/pages/history/history?type=${type}` });
   },
 
-  async openOpponent(event) {
+  openOpponent(event) {
     const opponentId = event.currentTarget.dataset.id;
     if (!opponentId) return;
-    this.setData({ opponentLoading: true, opponentDetail: { opponentName: '', records: [] } });
-    try {
-      const detail = await app.request({ path: `/api/mini/me/mahjong-opponents/${opponentId}` });
-      this.setData({
-        opponentDetail: {
-          ...detail,
-          records: detail.records.map((record) => ({
-            ...decorateNet(record),
-            amountDisplay: Number(record.amount || 0).toFixed(2),
-            resultLabel: Number(record.netProfit || 0) > 0 ? '赢得' : '输给',
-            createdDisplay: displayDate(record.createdAt),
-          })),
-        },
-      });
-    } catch (error) {
-      this.setData({ opponentDetail: null });
-      wx.showToast({ title: error.message || '对战记录加载失败', icon: 'none' });
-    } finally {
-      this.setData({ opponentLoading: false });
-    }
+    const opponent = this.data.opponents.find((item) => item.userId === opponentId);
+    if (!opponent) return;
+    this.setData({
+      opponentLoading: false,
+      opponentDetail: {
+        opponentName: opponent.userName,
+        netDisplay: opponent.netDisplay,
+        netClass: opponent.netClass,
+        winDisplay: Number(opponent.winTotal || 0).toFixed(2),
+        lossDisplay: Number(opponent.lossTotal || 0).toFixed(2),
+        roomCount: opponent.roomCount,
+      },
+    });
   },
 
   closeOpponent() {

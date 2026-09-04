@@ -79,15 +79,10 @@
       <text class="sheet-title">与 {{opponentDetail.opponentName}} 的对战</text>
       <button class="close-button" bindtap="closeOpponent" aria-label="关闭">×</button>
     </view>
-    <scroll-view scroll-y class="record-list">
-      <view wx:if="{{opponentLoading}}" class="sheet-loading">加载中...</view>
-      <block wx:elif="{{opponentDetail.records.length}}">
-        <view wx:for="{{opponentDetail.records}}" wx:key="id" class="record-row">
-          <view><text class="record-room">{{item.roomName}}（{{item.roomCode}}）</text><text class="record-date">{{item.createdDisplay}}</text></view>
-          <view class="record-result"><text class="{{item.netClass}}">{{item.resultLabel}} {{opponentDetail.opponentName}}</text><text class="record-amount">{{item.amountDisplay}}</text></view>
-        </view>
-      </block>
-      <view wx:else class="sheet-loading">没有有效的结算记录</view>
-    </scroll-view>
+    <view class="opponent-summary">
+      <view class="opponent-net"><text class="opponent-label">净输赢</text><text class="opponent-net-value {{opponentDetail.netClass}}">{{opponentDetail.netDisplay}}</text></view>
+      <view class="opponent-split"><view><text class="opponent-label">赢得 {{opponentDetail.opponentName}}</text><text class="opponent-number positive">{{opponentDetail.winDisplay}}</text></view><view><text class="opponent-label">输给 {{opponentDetail.opponentName}}</text><text class="opponent-number negative">{{opponentDetail.lossDisplay}}</text></view></view>
+      <text class="opponent-footnote">涉及 {{opponentDetail.roomCount}} 个麻将房</text>
+    </view>
   </view>
 </view>
