@@ -1,17 +1,14 @@
 <view class="page">
+  <view class="page-toolbar">
+    <button class="guide-button" bindtap="openGuide" aria-label="使用说明">?</button>
+  </view>
+
   <view class="game-switch" role="tablist">
     <view class="game-tab {{activeGame === 'poker' ? 'active' : ''}}" data-game="poker" bindtap="switchGame">德州扑克</view>
     <view class="game-tab {{activeGame === 'mahjong' ? 'active' : ''}}" data-game="mahjong" bindtap="switchGame">麻将</view>
   </view>
 
   <block wx:if="{{activeGame === 'poker'}}">
-    <view class="usage-guide">
-      <text class="guide-title">使用说明</text>
-      <view class="guide-step"><text class="guide-index">1</text><text>新建账本，或输入账本码打开已有账本</text></view>
-      <view class="guide-step"><text class="guide-index">2</text><text>在账本内添加参与者和买入金额</text></view>
-      <view class="guide-step"><text class="guide-index">3</text><text>录入每局结算，自动汇总总盈亏</text></view>
-    </view>
-
     <view class="section-heading">
       <text>新建德州账本</text>
       <text class="section-note">创建后可分享账本码</text>
@@ -42,13 +39,6 @@
   </block>
 
   <block wx:else>
-    <view class="usage-guide">
-      <text class="guide-title">使用说明</text>
-      <view class="guide-step"><text class="guide-index">1</text><text>创建房间，或输入房间码加入牌局</text></view>
-      <view class="guide-step"><text class="guide-index">2</text><text>在房间内设置玩家和本局金额</text></view>
-      <view class="guide-step"><text class="guide-index">3</text><text>录入每局结算，随时查看统计</text></view>
-    </view>
-
     <view wx:if="{{needsNickname}}" class="profile-block">
       <text class="block-title">设置麻将昵称</text>
       <input type="nickname" value="{{nickname}}" bindinput="onNicknameInput" placeholder="输入昵称" class="input" maxlength="30" />
@@ -67,4 +57,39 @@
       <button class="secondary-button" loading="{{joiningMahjong}}" bindtap="joinMahjongRoom">加入房间</button>
     </view>
   </block>
+</view>
+
+<view wx:if="{{guideOpen}}" class="guide-mask" bindtap="closeGuide">
+  <view class="guide-modal" catchtap="preventGuideClose">
+    <view class="guide-header">
+      <text class="guide-dialog-title">使用说明</text>
+      <button class="guide-close" bindtap="closeGuide" aria-label="关闭使用说明">×</button>
+    </view>
+    <scroll-view class="guide-body" scroll-y>
+      <view class="guide-section">
+        <text class="guide-section-title">麻将</text>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>进入房间即成为成员，点头像即可互相转账。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>茶水费是虚拟账户，用于收取茶位费。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>房主可切换普通模式和坐下模式；坐下模式需入座东南西北四个位置后才能转账。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>普通模式切换坐下模式时需玩家自行入座；切回普通模式时需全部离座。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>转错账可冲正，但只能冲正自己付款的记录。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>房间超过 30 分钟无转账会自动解散，账目归档保留。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>退出房间只退出本局，可随时再次进入，历史余额会自动接上。</text></view>
+      </view>
+
+      <view class="guide-section">
+        <text class="guide-section-title">德州</text>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>账本号是独立记账本，不同局和不同人可分账本记录。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>新建牌局时记录每位玩家的买入和结余，系统会自动计算净盈亏。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>保存后展示日期、人数和流水，点击记录可展开明细。</text></view>
+      </view>
+
+      <view class="guide-section guide-section-last">
+        <text class="guide-section-title guide-section-title-common">通用</text>
+        <view class="guide-item"><text class="guide-bullet guide-bullet-common">·</text><text>数据保存在云端，多人可实时协作。</text></view>
+        <view class="guide-item"><text class="guide-bullet guide-bullet-common">·</text><text>更换设备后使用同一微信账号即可同步数据。</text></view>
+        <view class="guide-item"><text class="guide-bullet guide-bullet-common">·</text><text>麻将的最近进入会保留最近 3 条记录。</text></view>
+      </view>
+    </scroll-view>
+  </view>
 </view>

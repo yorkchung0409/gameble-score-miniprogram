@@ -3,6 +3,7 @@ const app = getApp();
 Page({
   data: {
     activeGame: 'poker',
+    guideOpen: false,
     user: null,
     nickname: '',
     needsNickname: false,
@@ -73,6 +74,16 @@ Page({
       await this.loadMahjongUser();
     }
   },
+
+  openGuide() {
+    this.setData({ guideOpen: true });
+  },
+
+  closeGuide() {
+    this.setData({ guideOpen: false });
+  },
+
+  preventGuideClose() {},
 
   onNicknameInput(event) {
     this.setData({ nickname: event.detail.value });
