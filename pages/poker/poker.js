@@ -338,10 +338,13 @@ Page({
       ...this.data.gameRows,
       { playerId: player.id, playerName: player.name, buyIn: '', balance: '' },
     ];
+    const availableGamePlayers = this.data.availableGamePlayers.filter(
+      (_, itemIndex) => itemIndex !== index,
+    );
     this.setData({
       gameRows,
-      availableGamePlayers: this.data.availableGamePlayers.filter((_, itemIndex) => itemIndex !== index),
-      playerPickerOpen: false,
+      availableGamePlayers,
+      playerPickerOpen: availableGamePlayers.length > 0,
     });
   },
 
