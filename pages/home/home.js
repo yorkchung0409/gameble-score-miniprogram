@@ -172,7 +172,7 @@ Page({
         data: { roomName },
       });
       this.closePokerCreate();
-      wx.navigateTo({ url: `/pages/poker/poker?roomCode=${result.ledger.roomCode}` });
+      wx.navigateTo({ url: `/pages/poker/poker?roomCode=${result.room.roomCode}` });
     } catch (error) {
       wx.showToast({ title: error.message || '创建账本失败', icon: 'none' });
     } finally {
