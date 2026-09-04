@@ -113,12 +113,12 @@
   <view class="sheet game-editor">
     <view class="sheet-heading"><text class="sheet-title">{{editingGameId ? '编辑牌局' : '记录一局'}}</text><text class="sheet-note">从名单添加本局人员</text></view>
     <picker mode="date" value="{{gameDate}}" bindchange="onGameDateChange" class="date-picker"><view>{{gameDate}}</view></picker>
-    <view wx:if="{{availableGamePlayers.length}}" class="add-game-player" bindtap="togglePlayerPicker">
+    <view wx:if="{{availableGamePlayers.length}}" class="add-game-player" catchtap="togglePlayerPicker">
       <text>+ 添加本局人员</text>
       <text class="picker-caret">{{playerPickerOpen ? '收起' : '选择'}}</text>
     </view>
     <view wx:if="{{playerPickerOpen}}" class="player-picker-menu">
-      <view wx:for="{{availableGamePlayers}}" wx:key="id" class="player-picker-option" data-index="{{index}}" bindtap="onAddGamePlayer">
+      <view wx:for="{{availableGamePlayers}}" wx:key="id" class="player-picker-option" data-index="{{index}}" catchtap="onAddGamePlayer">
         <view class="player-picker-avatar">{{item.initial}}</view>
         <text>{{item.name}}</text>
       </view>

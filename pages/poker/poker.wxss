@@ -49,7 +49,7 @@
 .positive { color: #167443; font-weight: 700; }.negative { color: #C43C35; font-weight: 700; }.neutral { color: #6B7A70; }
 .game-footer { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 62rpx; font-size: 23rpx; }
 .game-actions { display: flex; align-items: center; }
-.overlay { position: fixed; z-index: 10; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: flex-end; background: rgba(34, 43, 38, 0.45); }
+.overlay { position: fixed; z-index: 1000; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: flex-end; background: rgba(34, 43, 38, 0.45); }
 .sheet { width: 100%; box-sizing: border-box; padding: 34rpx 28rpx 56rpx; background: #FFFFFF; border-radius: 12rpx 12rpx 0 0; }
 .sheet-title { display: block; margin-bottom: 26rpx; font-size: 34rpx; font-weight: 700; }
 .field-label { display: block; margin: 24rpx 0 10rpx; color: #6B7A70; font-size: 24rpx; }.identity-picker { height: 78rpx; box-sizing: border-box; padding: 22rpx 18rpx; border: 1rpx solid #DCE3DC; border-radius: 8rpx; font-size: 27rpx; }
