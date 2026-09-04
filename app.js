@@ -57,6 +57,16 @@ App({
 
   request,
 
+  connectContainer(path) {
+    if (typeof wx.cloud.connectContainer !== 'function') {
+      return Promise.reject(new Error('当前微信基础库不支持云托管 WebSocket'));
+    }
+    return wx.cloud.connectContainer({
+      service: CLOUD_SERVICE,
+      path,
+    });
+  },
+
   async login() {
     if (this.globalData.user) return { user: this.globalData.user, isNewUser: false };
     const result = await request({

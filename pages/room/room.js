@@ -43,9 +43,18 @@ Page({
     submitting: false,
     modeDialogOpen: false,
     switchingMode: false,
+    realtimeConnected: false,
   },
 
   async onLoad(options) {
+    this.hasJoinedRoom = false;
+    this.realtimeStarted = false;
+    this.realtimeGeneration = 0;
+    this.realtimeVersion = 0;
+    this.roomSocketTask = null;
+    this.realtimeReconnectTimer = null;
+    this.realtimePollActive = false;
+    this.realtimeRefreshPromise = null;
     const roomCode = (options.roomCode || '').trim().toUpperCase();
     if (!roomCode) {
       wx.showToast({ title: '缺少房间码', icon: 'none' });
@@ -59,12 +68,22 @@ Page({
       // A read-only room can still be displayed if login is temporarily unavailable.
     }
     await this.loadRoom();
+    this.startRealtime();
   },
 
   async onShow() {
     if (this.data.roomCode && !this.data.transferOpen && !this.data.modeDialogOpen) {
       await this.loadRoom(false);
     }
+    if (this.data.roomCode && !this.realtimeStarted) this.startRealtime();
+  },
+
+  onHide() {
+    this.stopRealtime();
+  },
+
+  onUnload() {
+    this.stopRealtime();
   },
 
   async onPullDownRefresh() {
@@ -79,14 +98,16 @@ Page({
       });
       const user = app.globalData.user;
       let detail = preview;
-      if (!preview.room.dissolvedAt && user) {
+      if (!preview.room.dissolvedAt && user && !this.hasJoinedRoom) {
         detail = await app.request({
           path: `/api/mahjong/rooms/${encodeURIComponent(this.data.roomCode)}/join`,
           method: 'POST',
           data: { userId: user.id },
         });
+        this.hasJoinedRoom = true;
       }
       this.applyRoomDetail(detail);
+      if (detail.room.dissolvedAt && this.realtimeStarted) this.stopRealtime();
     } catch (error) {
       const message = error.message || '加载房间失败';
       this.setData({ loadError: message });
@@ -94,6 +115,144 @@ Page({
     } finally {
       this.setData({ loading: false });
     }
+  },
+
+  startRealtime() {
+    if (!this.data.roomCode || this.realtimeStarted) return;
+    this.realtimeStarted = true;
+    const generation = ++this.realtimeGeneration;
+    this.connectRealtime(generation);
+  },
+
+  stopRealtime() {
+    this.realtimeStarted = false;
+    this.realtimeGeneration += 1;
+    if (this.realtimeReconnectTimer) {
+      clearTimeout(this.realtimeReconnectTimer);
+      this.realtimeReconnectTimer = null;
+    }
+    this.stopLongPolling();
+    const socketTask = this.roomSocketTask;
+    this.roomSocketTask = null;
+    if (socketTask && typeof socketTask.close === 'function') {
+      try {
+        socketTask.close({ code: 1000, reason: 'page hidden' });
+      } catch {
+        // The SDK may already have closed the task.
+      }
+    }
+    if (this.data.realtimeConnected) this.setData({ realtimeConnected: false });
+  },
+
+  async connectRealtime(generation) {
+    if (!this.realtimeStarted || generation !== this.realtimeGeneration) return;
+    this.stopLongPolling();
+    const roomCode = encodeURIComponent(this.data.roomCode);
+    try {
+      const result = await app.connectContainer(`/ws/mahjong?roomCode=${roomCode}`);
+      const socketTask = result?.socketTask || result;
+      if (!socketTask || generation !== this.realtimeGeneration || !this.realtimeStarted) {
+        if (socketTask && typeof socketTask.close === 'function') socketTask.close();
+        return;
+      }
+
+      this.roomSocketTask = socketTask;
+      let lost = false;
+      const handleLost = () => {
+        if (lost || generation !== this.realtimeGeneration || !this.realtimeStarted) return;
+        lost = true;
+        if (this.roomSocketTask === socketTask) this.roomSocketTask = null;
+        this.setData({ realtimeConnected: false });
+        this.startLongPolling(generation);
+        this.scheduleRealtimeReconnect(generation);
+      };
+      socketTask.onOpen(() => {
+        if (generation !== this.realtimeGeneration || !this.realtimeStarted) return;
+        this.setData({ realtimeConnected: true });
+        this.stopLongPolling();
+      });
+      socketTask.onMessage((message) => this.handleRealtimeMessage(message));
+      socketTask.onClose(handleLost);
+      socketTask.onError(handleLost);
+    } catch {
+      if (generation !== this.realtimeGeneration || !this.realtimeStarted) return;
+      this.startLongPolling(generation);
+      this.scheduleRealtimeReconnect(generation);
+    }
+  },
+
+  scheduleRealtimeReconnect(generation) {
+    if (this.realtimeReconnectTimer || !this.realtimeStarted) return;
+    this.realtimeReconnectTimer = setTimeout(() => {
+      this.realtimeReconnectTimer = null;
+      if (generation !== this.realtimeGeneration || !this.realtimeStarted || this.roomSocketTask) return;
+      this.connectRealtime(generation);
+    }, 5000);
+  },
+
+  handleRealtimeMessage(message) {
+    let payload = message?.data;
+    if (typeof payload === 'string') {
+      try {
+        payload = JSON.parse(payload);
+      } catch {
+        return;
+      }
+    }
+    if (!payload || typeof payload !== 'object') return;
+    if (Number.isSafeInteger(payload.version)) {
+      this.realtimeVersion = Math.max(this.realtimeVersion, payload.version);
+    }
+    if (payload.type === 'room.updated') this.refreshRoomFromRealtime();
+  },
+
+  refreshRoomFromRealtime() {
+    if (!this.realtimeStarted || this.realtimeRefreshPromise) return;
+    this.realtimeRefreshPromise = this.loadRoom(false).finally(() => {
+      this.realtimeRefreshPromise = null;
+    });
+  },
+
+  startLongPolling(generation) {
+    if (
+      !this.realtimeStarted ||
+      generation !== this.realtimeGeneration ||
+      this.realtimePollActive ||
+      this.roomSocketTask
+    ) return;
+    this.realtimePollActive = true;
+    this.runLongPolling(generation);
+  },
+
+  stopLongPolling() {
+    this.realtimePollActive = false;
+  },
+
+  async runLongPolling(generation) {
+    while (
+      this.realtimeStarted &&
+      generation === this.realtimeGeneration &&
+      this.realtimePollActive &&
+      !this.roomSocketTask
+    ) {
+      try {
+        const result = await app.request({
+          path: `/api/mahjong/rooms/${encodeURIComponent(this.data.roomCode)}/events?since=${this.realtimeVersion}`,
+        });
+        if (!this.realtimeStarted || generation !== this.realtimeGeneration) return;
+        const version = Number(result?.version);
+        if (Number.isSafeInteger(version) && version > this.realtimeVersion) {
+          this.realtimeVersion = version;
+          this.refreshRoomFromRealtime();
+        }
+      } catch {
+        await this.waitForRealtime(3000);
+      }
+    }
+  },
+
+  waitForRealtime(delayMs) {
+    return new Promise((resolve) => setTimeout(resolve, delayMs));
   },
 
   applyRoomDetail(detail) {
