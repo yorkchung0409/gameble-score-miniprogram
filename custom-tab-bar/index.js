@@ -30,8 +30,12 @@ Component({
 
     switchTab(event) {
       const { index, path } = event.currentTarget.dataset;
-      if (Number(index) === this.data.selected) return;
-      wx.switchTab({ url: `/${path}` });
+      if (!path) return;
+      this.setData({ selected: Number(index) });
+      wx.switchTab({
+        url: `/${path}`,
+        fail: () => this.updateSelected(),
+      });
     },
   },
 });
