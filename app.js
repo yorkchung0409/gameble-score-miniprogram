@@ -29,8 +29,14 @@ function request({ path, method = 'GET', data }) {
         }
         reject(new Error(response.data?.error?.message || '请求失败'));
       },
-      fail: (error) =>
-        reject(new Error(error.errMsg || '云托管服务暂不可用，请稍后重试')),
+      fail: (error) => {
+        const message = error.errMsg || '';
+        if (message.includes('102002')) {
+          reject(new Error('云托管服务暂未就绪，请稍后重试'));
+          return;
+        }
+        reject(new Error(message || '云托管服务暂不可用，请稍后重试'));
+      },
     });
   });
 }

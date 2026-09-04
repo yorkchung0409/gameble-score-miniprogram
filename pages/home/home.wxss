@@ -1,18 +1,24 @@
 .page { min-height: 100vh; box-sizing: border-box; padding: 42rpx 32rpx 210rpx; color: #222B26; }
-.page-toolbar { display: flex; justify-content: flex-end; height: 64rpx; margin-bottom: 24rpx; }
+.page-toolbar { display: flex; justify-content: flex-end; height: 64rpx; margin-bottom: 46rpx; }
 .guide-button, .guide-close { display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; }
 .guide-button::after, .guide-close::after { border: 0; }
 .guide-button { width: 64rpx; height: 64rpx; border: 1rpx solid #C8D4C9; border-radius: 50%; background: #FFFFFF; color: #1E7A46; font-size: 40rpx; font-weight: 700; line-height: 64rpx; }
-.section-heading { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 22rpx; font-size: 38rpx; font-weight: 700; }
-.section-heading.compact { margin-top: 50rpx; }
-.form-block, .profile-block { padding: 28rpx; border: 1rpx solid #E6EAE2; border-radius: 8rpx; background: #FFFFFF; }
-.profile-block { margin-bottom: 42rpx; }
-.block-title { display: block; margin-bottom: 20rpx; font-size: 34rpx; font-weight: 700; }
-.input { height: 96rpx; box-sizing: border-box; margin-bottom: 20rpx; padding: 0 22rpx; border: 1rpx solid #DCE3DC; border-radius: 8rpx; font-size: 32rpx; background: #FFFFFF; }
+.entry-section { margin-bottom: 64rpx; }
+.poker-section { margin-bottom: 0; }
+.section-heading { display: block; margin: 0 0 24rpx; font-size: 40rpx; font-weight: 700; }
+.input, .sheet-input { height: 96rpx; box-sizing: border-box; margin-bottom: 20rpx; padding: 0 22rpx; border: 1rpx solid #DCE3DC; border-radius: 8rpx; font-size: 32rpx; background: #FFFFFF; }
 .code-input { text-transform: uppercase; letter-spacing: 0; }
-.primary-button, .secondary-button { min-height: 96rpx; margin: 0; border-radius: 8rpx; font-size: 33rpx; font-weight: 700; line-height: 96rpx; }
-.primary-button { background: #1E7A46; color: #FFFFFF; }
-.secondary-button { background: #E8ECE6; color: #222B26; }
+.action-button { min-height: 106rpx; margin: 0 0 18rpx; border-radius: 8rpx; font-size: 34rpx; font-weight: 700; line-height: 106rpx; }
+.mahjong-button { background: #1E7A46; color: #FFFFFF; }
+.poker-button { background: #276747; color: #FFFFFF; }
+.secondary-action { border: 1rpx solid #D2DCD2; background: #FFFFFF; color: #2C3A31; }
+.sheet-mask { position: fixed; z-index: 1000; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: flex-end; background: rgba(22, 31, 25, 0.46); }
+.action-sheet { width: 100%; box-sizing: border-box; padding: 34rpx 32rpx calc(34rpx + env(safe-area-inset-bottom)); border-radius: 16rpx 16rpx 0 0; background: #FFFFFF; }
+.sheet-title { display: block; margin-bottom: 28rpx; color: #222B26; font-size: 38rpx; font-weight: 700; }
+.sheet-actions { display: flex; gap: 18rpx; }
+.sheet-actions button { flex: 1; min-width: 0; min-height: 96rpx; margin: 0; border-radius: 8rpx; font-size: 32rpx; font-weight: 700; line-height: 96rpx; }
+.sheet-cancel { background: #E8ECE6; color: #2C3A31; }
+.sheet-confirm { color: #FFFFFF; }
 .guide-mask { position: fixed; z-index: 1000; top: 0; right: 0; bottom: 0; left: 0; display: flex; justify-content: center; align-items: center; padding: 48rpx; box-sizing: border-box; background: rgba(22, 31, 25, 0.5); }
 .guide-modal { width: 100%; max-height: 78vh; overflow: hidden; border: 1rpx solid #E6EAE2; border-radius: 8rpx; background: #FFFFFF; }
 .guide-header { display: flex; justify-content: space-between; align-items: center; min-height: 94rpx; padding: 0 28rpx; border-bottom: 1rpx solid #E6EAE2; }

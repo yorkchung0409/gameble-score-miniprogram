@@ -3,22 +3,48 @@
     <button class="guide-button" bindtap="openGuide" aria-label="使用说明">?</button>
   </view>
 
-  <view wx:if="{{needsNickname}}" class="profile-block">
-    <text class="block-title">设置麻将昵称</text>
-    <input type="nickname" value="{{nickname}}" bindinput="onNicknameInput" placeholder="输入昵称" class="input" maxlength="30" />
-    <button class="secondary-button" loading="{{savingProfile}}" bindtap="saveProfile">保存昵称</button>
+  <view class="entry-section">
+    <text class="section-heading">麻将开房</text>
+    <button class="action-button mahjong-button" bindtap="openMahjongCreate">创建麻将房</button>
+    <button class="action-button secondary-action" bindtap="openMahjongJoin">加入麻将房</button>
   </view>
 
-  <view class="section-heading"><text>创建麻将房</text></view>
-  <view class="form-block">
-    <input value="{{mahjongRoomCode}}" bindinput="onMahjongRoomCodeInput" placeholder="房间码（选填）" class="input code-input" maxlength="50" />
-    <button class="primary-button" loading="{{creatingMahjong}}" bindtap="createMahjongRoom">创建房间</button>
+  <view class="entry-section poker-section">
+    <text class="section-heading">扑克记账</text>
+    <button class="action-button poker-button" bindtap="openPokerCreate">创建德州账本</button>
   </view>
+</view>
 
-  <view class="section-heading compact"><text>加入麻将房</text></view>
-  <view class="form-block">
+<view wx:if="{{showMahjongCreate}}" class="sheet-mask" bindtap="closeMahjongCreate">
+  <view class="action-sheet" catchtap="preventSheetClose">
+    <text class="sheet-title">创建麻将房</text>
+    <input value="{{mahjongRoomCode}}" bindinput="onMahjongRoomCodeInput" placeholder="房间码（选填，留空自动生成）" class="sheet-input code-input" maxlength="50" />
+    <view class="sheet-actions">
+      <button class="sheet-cancel" bindtap="closeMahjongCreate">取消</button>
+      <button class="sheet-confirm mahjong-button" loading="{{creatingMahjong}}" bindtap="createMahjongRoom">创建房间</button>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{showMahjongJoin}}" class="sheet-mask" bindtap="closeMahjongJoin">
+  <view class="action-sheet" catchtap="preventSheetClose">
+    <text class="sheet-title">加入麻将房</text>
     <input value="{{mahjongJoinCode}}" bindinput="onMahjongJoinCodeInput" placeholder="输入房间码" class="input code-input" maxlength="50" />
-    <button class="secondary-button" loading="{{joiningMahjong}}" bindtap="joinMahjongRoom">加入房间</button>
+    <view class="sheet-actions">
+      <button class="sheet-cancel" bindtap="closeMahjongJoin">取消</button>
+      <button class="sheet-confirm mahjong-button" loading="{{joiningMahjong}}" bindtap="joinMahjongRoom">加入房间</button>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{showPokerCreate}}" class="sheet-mask" bindtap="closePokerCreate">
+  <view class="action-sheet" catchtap="preventSheetClose">
+    <text class="sheet-title">创建德州账本</text>
+    <input value="{{pokerLedgerName}}" bindinput="onPokerLedgerNameInput" placeholder="账本名称" class="sheet-input" maxlength="50" />
+    <view class="sheet-actions">
+      <button class="sheet-cancel" bindtap="closePokerCreate">取消</button>
+      <button class="sheet-confirm poker-button" loading="{{creatingPoker}}" bindtap="createPokerLedger">创建账本</button>
+    </view>
   </view>
 </view>
 
@@ -42,7 +68,7 @@
 
       <view class="guide-section">
         <text class="guide-section-title">德州</text>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>账本号是独立记账本，不同局和不同人可分账本记录。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>账本是创建者个人使用的记账本，不与他人协作。</text></view>
         <view class="guide-item"><text class="guide-bullet">·</text><text>新建牌局时记录每位玩家的买入和结余，系统会自动计算净盈亏。</text></view>
         <view class="guide-item"><text class="guide-bullet">·</text><text>保存后展示日期、人数和流水，点击记录可展开明细。</text></view>
       </view>

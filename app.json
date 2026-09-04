@@ -1,7 +1,6 @@
 {
   "pages": [
     "pages/home/home",
-    "pages/poker-home/poker-home",
     "pages/profile/profile",
     "pages/poker/poker",
     "pages/room/room"
@@ -21,11 +20,7 @@
     "list": [
       {
         "pagePath": "pages/home/home",
-        "text": "麻将"
-      },
-      {
-        "pagePath": "pages/poker-home/poker-home",
-        "text": "扑克"
+        "text": "首页"
       },
       {
         "pagePath": "pages/profile/profile",

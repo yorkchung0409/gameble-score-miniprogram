@@ -4,13 +4,15 @@ Page({
   data: {
     guideOpen: false,
     user: null,
-    nickname: '',
-    needsNickname: false,
-    savingProfile: false,
+    showMahjongCreate: false,
+    showMahjongJoin: false,
+    showPokerCreate: false,
     mahjongRoomCode: '',
     mahjongJoinCode: '',
     creatingMahjong: false,
     joiningMahjong: false,
+    pokerLedgerName: '我的账本',
+    creatingPoker: false,
   },
 
   async onLoad() {
@@ -22,12 +24,7 @@ Page({
       await this.loadMahjongUser();
       return;
     }
-    const user = app.globalData.user;
-    this.setData({
-      user,
-      nickname: user.name === '微信用户' ? '' : user.name,
-      needsNickname: user.name === '微信用户',
-    });
+    this.setData({ user: app.globalData.user });
   },
 
   async onPullDownRefresh() {
@@ -38,13 +35,8 @@ Page({
   async loadMahjongUser() {
     try {
       const result = await app.login();
-      const user = result.user;
-      this.setData({
-        user,
-        nickname: user.name === '微信用户' ? '' : user.name,
-        needsNickname: user.name === '微信用户',
-      });
-      return user;
+      this.setData({ user: result.user });
+      return result.user;
     } catch {
       return null;
     }
@@ -69,9 +61,31 @@ Page({
 
   preventGuideClose() {},
 
-  onNicknameInput(event) {
-    this.setData({ nickname: event.detail.value });
+  openMahjongCreate() {
+    this.setData({ showMahjongCreate: true });
   },
+
+  closeMahjongCreate() {
+    this.setData({ showMahjongCreate: false });
+  },
+
+  openMahjongJoin() {
+    this.setData({ showMahjongJoin: true });
+  },
+
+  closeMahjongJoin() {
+    this.setData({ showMahjongJoin: false });
+  },
+
+  openPokerCreate() {
+    this.setData({ showPokerCreate: true });
+  },
+
+  closePokerCreate() {
+    this.setData({ showPokerCreate: false });
+  },
+
+  preventSheetClose() {},
 
   onMahjongRoomCodeInput(event) {
     this.setData({ mahjongRoomCode: event.detail.value });
@@ -81,33 +95,8 @@ Page({
     this.setData({ mahjongJoinCode: event.detail.value });
   },
 
-  async saveProfile() {
-    const name = this.data.nickname.trim();
-    if (!name) {
-      wx.showToast({ title: '请填写昵称', icon: 'none' });
-      return;
-    }
-    const user = await this.ensureMahjongUser();
-    if (!user) return;
-
-    this.setData({ savingProfile: true });
-    try {
-      const result = await app.request({
-        path: `/api/mahjong/users/${user.id}/profile`,
-        method: 'PATCH',
-        data: { name },
-      });
-      app.globalData.user = result.user;
-      this.setData({
-        user: result.user,
-        nickname: result.user.name,
-        needsNickname: false,
-      });
-    } catch (error) {
-      wx.showToast({ title: error.message || '昵称保存失败', icon: 'none' });
-    } finally {
-      this.setData({ savingProfile: false });
-    }
+  onPokerLedgerNameInput(event) {
+    this.setData({ pokerLedgerName: event.detail.value });
   },
 
   async createMahjongRoom() {
@@ -124,6 +113,7 @@ Page({
           creatorUserId: user.id,
         },
       });
+      this.closeMahjongCreate();
       wx.navigateTo({ url: `/pages/room/room?roomCode=${result.room.roomCode}` });
     } catch (error) {
       wx.showToast({ title: error.message || '创建房间失败', icon: 'none' });
@@ -141,11 +131,36 @@ Page({
     this.setData({ joiningMahjong: true });
     try {
       await app.request({ path: `/api/mahjong/rooms/${encodeURIComponent(roomCode)}` });
+      this.closeMahjongJoin();
       wx.navigateTo({ url: `/pages/room/room?roomCode=${roomCode}` });
     } catch (error) {
       wx.showToast({ title: error.message || '房间不存在', icon: 'none' });
     } finally {
       this.setData({ joiningMahjong: false });
+    }
+  },
+
+  async createPokerLedger() {
+    const roomName = this.data.pokerLedgerName.trim();
+    if (!roomName) {
+      wx.showToast({ title: '请填写账本名称', icon: 'none' });
+      return;
+    }
+
+    this.setData({ creatingPoker: true });
+    try {
+      await app.login();
+      const result = await app.request({
+        path: '/api/mini/poker/ledgers',
+        method: 'POST',
+        data: { roomName },
+      });
+      this.closePokerCreate();
+      wx.navigateTo({ url: `/pages/poker/poker?roomCode=${result.ledger.roomCode}` });
+    } catch (error) {
+      wx.showToast({ title: error.message || '创建账本失败', icon: 'none' });
+    } finally {
+      this.setData({ creatingPoker: false });
     }
   },
 });

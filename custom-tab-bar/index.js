@@ -2,8 +2,7 @@ Component({
   data: {
     selected: 0,
     items: [
-      { pagePath: 'pages/home/home', text: '麻将' },
-      { pagePath: 'pages/poker-home/poker-home', text: '扑克' },
+      { pagePath: 'pages/home/home', text: '首页' },
       { pagePath: 'pages/profile/profile', text: '我的' },
     ],
   },
