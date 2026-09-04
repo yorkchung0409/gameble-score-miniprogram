@@ -35,17 +35,16 @@
 
   <view class="section-title-row">
     <text class="section-title">人员</text>
-    <button class="text-button" size="mini" bindtap="togglePlayerManager">{{showPlayerManager ? '收起' : '管理人员'}}</button>
+    <button class="text-button" size="mini" bindtap="togglePlayerManager">{{playerManagerLabel}}</button>
   </view>
-  <view wx:if="{{detail.players.length}}" class="player-list">
-    <view wx:for="{{detail.players}}" wx:key="id" class="player-chip">
-      <view class="player-avatar">{{item.initial}}</view>
-      <text>{{item.name}}</text>
-    </view>
-  </view>
-  <view wx:else class="empty-line">还没有人员，先添加参与牌局的人。</view>
-
   <view wx:if="{{showPlayerManager}}" class="manager-panel">
+    <view wx:if="{{detail.players.length}}" class="player-list">
+      <view wx:for="{{detail.players}}" wx:key="id" class="player-chip">
+        <view class="player-avatar">{{item.initial}}</view>
+        <text>{{item.name}}</text>
+      </view>
+    </view>
+    <view wx:else class="empty-line">还没有人员，先添加参与牌局的人。</view>
     <view class="manager-add">
       <input value="{{playerName}}" bindinput="onPlayerNameInput" placeholder="人员姓名" class="input" maxlength="100" />
       <button class="add-button" loading="{{addingPlayer}}" bindtap="addPlayer">添加</button>

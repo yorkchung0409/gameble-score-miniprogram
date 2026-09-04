@@ -35,6 +35,7 @@ Page({
     selfPlayerIndex: 0,
     savingRoom: false,
     showPlayerManager: false,
+    playerManagerLabel: '管理人员',
     playerName: '',
     addingPlayer: false,
     deletingPlayerId: '',
@@ -71,7 +72,12 @@ Page({
       const detail = await app.request({
         path: `/api/mini/poker/ledgers/${encodeURIComponent(this.data.roomCode)}`,
       });
-      this.setData({ detail: this.decorateDetail(detail), loading: false, loadError: '' });
+    this.setData({
+      detail: this.decorateDetail(detail),
+      playerManagerLabel: `管理人员（${detail.players.length}人）`,
+      loading: false,
+      loadError: '',
+    });
     } catch (error) {
       if (showFailure) {
         wx.showToast({ title: error.message || '加载账本失败', icon: 'none' });
@@ -206,7 +212,12 @@ Page({
   },
 
   togglePlayerManager() {
-    this.setData({ showPlayerManager: !this.data.showPlayerManager });
+    this.setData({
+      showPlayerManager: !this.data.showPlayerManager,
+      playerManagerLabel: this.data.showPlayerManager
+        ? `管理人员（${this.data.detail.players.length}人）`
+        : '收起',
+    });
   },
 
   onPlayerNameInput(event) {
