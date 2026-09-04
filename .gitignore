@@ -1,0 +1,6 @@
+# WeChat DevTools local files
+project.private.config.json
+
+# Editor and OS files
+.DS_Store
+Thumbs.db

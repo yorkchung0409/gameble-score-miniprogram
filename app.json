@@ -1,0 +1,12 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/room/room"
+  ],
+  "window": {
+    "navigationBarTitleText": "牌局记账",
+    "navigationBarBackgroundColor": "#F4F6F1",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F4F6F1"
+  }
+}

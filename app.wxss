@@ -1,0 +1,9 @@
+page {
+  background: #F4F6F1;
+  color: #222B26;
+  font-size: 28rpx;
+}
+
+button::after {
+  border: 0;
+}

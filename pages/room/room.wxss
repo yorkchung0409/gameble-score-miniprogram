@@ -1,0 +1,6 @@
+.page { padding: 32rpx; }
+.loading { padding-top: 240rpx; text-align: center; color: #6B7A70; }
+.title-row { display: flex; justify-content: space-between; align-items: baseline; margin: 16rpx 0 28rpx; }
+.title { font-size: 36rpx; font-weight: 600; }.code { font-family: monospace; color: #6B7A70; }
+.card { margin-bottom: 24rpx; padding: 28rpx; background: #fff; border: 1rpx solid #E6EAE2; border-radius: 16rpx; }
+.label { display: block; margin-bottom: 16rpx; font-weight: 600; }.row { display: flex; justify-content: space-between; align-items: center; padding: 16rpx 0; border-top: 1rpx solid #EEF1ED; }.amount { margin-left: 20rpx; color: #6B7A70; }.picker, .input { height: 84rpx; box-sizing: border-box; padding: 22rpx 20rpx; margin-bottom: 20rpx; border: 1rpx solid #DCE3DC; border-radius: 10rpx; }.primary { background: #1E7A46; color: #fff; font-weight: 600; }.reverse { margin: 0; padding: 0 16rpx; background: #E8ECE6; color: #222B26; font-size: 24rpx; }

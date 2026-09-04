@@ -1,0 +1,26 @@
+<view wx:if="{{loading}}" class="loading">加载中...</view>
+
+<view wx:else class="page">
+  <view class="header">
+    <view class="avatar">{{userInitial}}</view>
+    <text class="name">{{user.name}}</text>
+  </view>
+
+  <view class="card" wx:if="{{user.name === '微信用户'}}">
+    <text class="label">设置昵称</text>
+    <input type="nickname" value="{{nickname}}" bindinput="onNicknameInput" placeholder="输入昵称" class="input" maxlength="30" />
+    <button class="primary" loading="{{savingProfile}}" bindtap="saveProfile">确认</button>
+  </view>
+
+  <view class="card">
+    <text class="label">创建麻将房</text>
+    <input value="{{roomCode}}" bindinput="onRoomCodeInput" placeholder="房间码（选填）" class="input" maxlength="50" />
+    <button class="primary" loading="{{creating}}" bindtap="createRoom">创建房间</button>
+  </view>
+
+  <view class="card">
+    <text class="label">加入麻将房</text>
+    <input value="{{joinCode}}" bindinput="onJoinCodeInput" placeholder="输入房间码" class="input" maxlength="50" />
+    <button class="secondary" loading="{{joining}}" bindtap="joinRoom">加入房间</button>
+  </view>
+</view>

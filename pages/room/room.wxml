@@ -1,0 +1,32 @@
+<view wx:if="{{loading}}" class="loading">加载中...</view>
+<view wx:elif="{{detail}}" class="page">
+  <view class="title-row">
+    <text class="title">{{detail.room.name}}</text>
+    <text class="code">{{detail.room.roomCode}}</text>
+  </view>
+  <view class="card">
+    <text class="label">成员</text>
+    <view wx:for="{{detail.members}}" wx:key="userId" class="row">{{item.userName}}</view>
+  </view>
+  <view class="card">
+    <text class="label">积分</text>
+    <view wx:for="{{detail.stats.balances}}" wx:key="userId" class="row">
+      <text>{{item.userName}}</text><text>{{item.balance}}</text>
+    </view>
+  </view>
+  <view class="card">
+    <text class="label">记一笔</text>
+    <picker range="{{payeeOptions}}" range-key="name" value="{{payeeIndex}}" bindchange="onPayeeChange" class="picker">
+      <view>{{payeeOptions[payeeIndex].name}}</view>
+    </picker>
+    <input type="digit" value="{{amount}}" bindinput="onAmountInput" placeholder="金额" class="input" />
+    <button class="primary" loading="{{submitting}}" bindtap="submitTransfer">确认记账</button>
+  </view>
+  <view class="card">
+    <text class="label">流水</text>
+    <view wx:for="{{detail.transactions}}" wx:key="id" class="row">
+      <view><text>{{item.payerName}} → {{item.payeeName || '茶水费'}}</text><text class="amount">{{item.amount}}</text></view>
+      <button wx:if="{{item.canReverse}}" data-id="{{item.id}}" size="mini" class="reverse" bindtap="reverseTransaction">冲正</button>
+    </view>
+  </view>
+</view>
