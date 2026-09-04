@@ -1,33 +1,72 @@
-<view wx:if="{{loading}}" class="loading">加载中...</view>
+<view wx:if="{{loading}}" class="state-page"><text>加载中...</text></view>
+<view wx:elif="{{loadError}}" class="state-page"><text class="error-text">{{loadError}}</text><button class="primary-button" bindtap="loadRoom">重新加载</button></view>
 <view wx:elif="{{detail}}" class="page">
-  <view class="title-row">
-    <text class="title">{{detail.room.name}}</text>
-    <view><text wx:if="{{isArchived}}" class="archived-label">已归档</text><text class="code">{{detail.room.roomCode}}</text></view>
+  <view class="room-header">
+    <button class="back-button" bindtap="goBack" aria-label="返回">‹</button>
+    <view class="room-heading">
+      <view class="heading-line"><text class="room-title">{{detail.room.name}}</text><text class="mode-badge">{{modeLabel}}</text></view>
+      <view class="code-line" bindtap="copyRoomCode"><text>房间号：</text><text class="code">{{roomCode}}</text><text class="copy-hint">复制</text></view>
+    </view>
+    <button class="exit-button" wx:if="{{!isArchived}}" bindtap="exitRoom">退出</button>
+    <text class="archive-label" wx:else>已归档</text>
   </view>
-  <view class="card">
-    <text class="label">成员</text>
-    <view wx:for="{{detail.members}}" wx:key="userId" class="row">{{item.userName}}</view>
-  </view>
-  <view class="card">
-    <text class="label">积分</text>
-    <view wx:for="{{detail.stats.balances}}" wx:key="userId" class="row">
-      <text>{{item.userName}}</text><text>{{item.balance}}</text>
+
+  <view wx:if="{{isFreeMode}}" class="panel member-panel">
+    <view class="panel-heading"><text>成员</text><button wx:if="{{isOwner}}" class="text-action" bindtap="openModeDialog">切换模式</button></view>
+    <view class="member-grid">
+      <view wx:for="{{memberRows}}" wx:key="userId" class="member-item" data-id="{{item.userId}}" bindtap="openTransfer">
+        <view class="avatar-wrap"><view class="avatar {{item.isMe ? 'my-avatar' : ''}}">{{item.initial}}</view><text wx:if="{{item.isMe}}" class="me-tag">我</text></view>
+        <text class="member-name">{{item.userName}}</text><text class="member-balance {{item.balance > 0 ? 'positive' : item.balance < 0 ? 'negative' : ''}}">{{item.balanceDisplay}}</text>
+      </view>
+      <view class="member-item tea-item" data-id="tea_fee" bindtap="openTransfer">
+        <view class="avatar tea-avatar">茶</view><text class="member-name">茶水费</text><text class="member-balance tea-balance">{{detail.stats.teaFeeTotal}}</text>
+      </view>
     </view>
   </view>
-  <view wx:if="{{!isArchived}}" class="card">
-    <text class="label">记一笔</text>
-    <picker range="{{payeeOptions}}" range-key="name" value="{{payeeIndex}}" bindchange="onPayeeChange" class="picker">
-      <view>{{payeeOptions[payeeIndex].name}}</view>
-    </picker>
-    <input type="digit" value="{{amount}}" bindinput="onAmountInput" placeholder="金额" class="input" />
-    <button class="primary" loading="{{submitting}}" bindtap="submitTransfer">确认记账</button>
-  </view>
-  <view wx:else class="archive-notice">该麻将房已归档，仅可查看历史积分和流水。</view>
-  <view class="card">
-    <text class="label">流水</text>
-    <view wx:for="{{detail.transactions}}" wx:key="id" class="row">
-      <view><text>{{item.payerName}} → {{item.payeeName || '茶水费'}}</text><text class="amount">{{item.amount}}</text></view>
-      <button wx:if="{{item.canReverse}}" data-id="{{item.id}}" size="mini" class="reverse" bindtap="reverseTransaction">冲正</button>
+
+  <view wx:else class="panel seat-panel">
+    <view class="panel-heading"><text>座位</text><button wx:if="{{isOwner}}" class="text-action" bindtap="openModeDialog">切换模式</button></view>
+    <view class="seat-grid">
+      <view wx:for="{{seatCards}}" wx:key="seatIndex" class="seat-card {{item.isMe ? 'selected-seat' : ''}}">
+        <text class="seat-name">{{item.seatName}}</text>
+        <view wx:if="{{item.occupied}}" class="seat-avatar {{item.isMe ? 'my-seat' : ''}}">{{item.initial}}</view>
+        <view wx:else class="empty-seat">空位</view>
+        <text wx:if="{{item.occupied}}" class="seat-user">{{item.userName}}{{item.isMe ? '（我）' : ''}}</text>
+        <button wx:if="{{item.occupied && item.isMe}}" class="seat-action leave-seat" bindtap="leaveSeat">离座</button>
+        <button wx:elif="{{item.occupied && currentUserSeated && !item.isMe}}" class="seat-action transfer-seat" data-id="{{item.userId}}" bindtap="openTransfer">转账</button>
+        <button wx:elif="{{!item.occupied}}" class="seat-action sit-seat" data-index="{{item.seatIndex}}" bindtap="sitDown">入座</button>
+      </view>
     </view>
   </view>
+
+  <view class="score-panel">
+    <view><text class="score-label">总流水</text><text class="score-value">¥{{detail.stats.totalTurnover}}</text></view>
+    <view class="balance-state {{detail.stats.balanceCheck === 'balanced' ? 'balanced' : 'unbalanced'}}"><text>账目</text><text>{{detail.stats.balanceCheck === 'balanced' ? '已平衡' : '不平衡'}}</text></view>
+  </view>
+
+  <view wx:if="{{!isArchived}}" class="record-action" bindtap="openGeneralTransfer"><text>记一笔</text><text class="record-arrow">›</text></view>
+  <view wx:else class="archive-notice">该房间已归档，仅可查看历史积分和流水。</view>
+
+  <view class="panel transaction-panel">
+    <view class="panel-heading"><text>转账流水</text><text class="panel-help">{{isFreeMode ? '点击成员头像转账' : '入座后可转账'}}</text></view>
+    <view wx:if="{{!detail.transactions.length}}" class="empty-transactions">还没有转账记录</view>
+    <view wx:for="{{detail.transactions}}" wx:key="id" class="transaction-row {{item.isReversal ? 'reversal-row' : ''}}">
+      <view class="transaction-main"><view class="transaction-time">{{item.timeDisplay}}<text wx:if="{{item.isReversal}}" class="reversal-tag">冲正</text></view><view><text class="payer">{{item.payerName}}</text><text class="arrow">→</text><text class="payee">{{item.payeeDisplay}}</text></view><text wx:if="{{item.remark}}" class="remark">备注：{{item.remark}}</text></view>
+      <view class="transaction-side"><text class="transaction-amount">¥{{item.amountDisplay}}</text><button wx:if="{{item.canReverse}}" class="reverse-button" data-id="{{item.id}}" bindtap="reverseTransaction">冲正</button></view>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{transferOpen}}" class="modal-mask" bindtap="closeTransfer">
+  <view class="modal" catchtap="preventModalClose">
+    <view class="modal-header"><text class="modal-title">记一笔</text><button class="modal-close" bindtap="closeTransfer">×</button></view>
+    <view class="transfer-route"><view class="route-avatar my-route">{{currentUserInitial}}</view><text class="route-name">{{currentUserName || '我'}}</text><text class="route-arrow">→</text><picker range="{{payeeOptions}}" range-key="name" value="{{payeeIndex}}" bindchange="onPayeeChange"><view class="route-target"><view class="route-avatar target-route">{{transferPayeeInitial}}</view><text class="route-name">{{transferPayeeName}}</text></view></picker></view>
+    <input class="modal-input amount-input" type="digit" value="{{amount}}" bindinput="onAmountInput" placeholder="输入金额" />
+    <input class="modal-input" value="{{remark}}" bindinput="onRemarkInput" placeholder="备注（选填）" maxlength="100" />
+    <button class="confirm-button" loading="{{submitting}}" bindtap="submitTransfer">确认转账</button>
+  </view>
+</view>
+
+<view wx:if="{{modeDialogOpen}}" class="modal-mask" bindtap="closeModeDialog">
+  <view class="modal mode-modal" catchtap="preventModalClose"><view class="modal-header"><text class="modal-title">房间模式</text><button class="modal-close" bindtap="closeModeDialog">×</button></view><button class="mode-option" data-mode="free" bindtap="switchMode"><text class="mode-option-title">普通模式</text><text class="mode-option-desc">进入房间即可转账</text></button><button class="mode-option" data-mode="seated" bindtap="switchMode"><text class="mode-option-title">坐下模式</text><text class="mode-option-desc">入座后才能转账，适合固定四家</text></button></view>
 </view>
