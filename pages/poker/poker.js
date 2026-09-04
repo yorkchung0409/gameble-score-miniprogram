@@ -31,6 +31,8 @@ Page({
     expandedGameId: '',
     showRoomSettings: false,
     roomNameInput: '',
+    selfPlayerOptions: [],
+    selfPlayerIndex: 0,
     savingRoom: false,
     showPlayerManager: false,
     playerName: '',
@@ -65,11 +67,11 @@ Page({
 
   async loadRoom(showFailure = true) {
     try {
+      await app.login();
       const detail = await app.request({
-        path: `/api/poker/rooms/${encodeURIComponent(this.data.roomCode)}`,
+        path: `/api/mini/poker/ledgers/${encodeURIComponent(this.data.roomCode)}`,
       });
       this.setData({ detail: this.decorateDetail(detail), loading: false, loadError: '' });
-      app.recordPokerVisit(detail.room).catch(() => {});
     } catch (error) {
       if (showFailure) {
         wx.showToast({ title: error.message || '加载账本失败', icon: 'none' });
@@ -117,6 +119,17 @@ Page({
       ...detail,
       players,
       games,
+      leaderboard: (detail.leaderboard || []).map((entry) => {
+        const netCents = toCents(entry.netProfit);
+        return {
+          ...entry,
+          netDisplay: formatNet(entry.netProfit),
+          netClass: netCents > 0 ? 'positive' : netCents < 0 ? 'negative' : 'neutral',
+          winDisplay: formatAmount(entry.winTotal),
+          lossDisplay: formatAmount(entry.lossTotal),
+          isSelf: entry.playerId === detail.selfPlayerId,
+        };
+      }),
       stats: {
         ...detail.stats,
         totalBuyInDisplay: formatAmount(detail.stats.totalBuyIn),
@@ -136,9 +149,19 @@ Page({
   },
 
   openRoomSettings() {
+    const selfPlayerOptions = [
+      { id: '', name: '暂不设置' },
+      ...this.data.detail.players.map((player) => ({ id: player.id, name: player.name })),
+    ];
+    const selfPlayerIndex = Math.max(
+      0,
+      selfPlayerOptions.findIndex((option) => option.id === this.data.detail.selfPlayerId),
+    );
     this.setData({
       showRoomSettings: true,
       roomNameInput: this.data.detail.room.roomName,
+      selfPlayerOptions,
+      selfPlayerIndex,
     });
   },
 
@@ -150,6 +173,10 @@ Page({
     this.setData({ roomNameInput: event.detail.value });
   },
 
+  onSelfPlayerChange(event) {
+    this.setData({ selfPlayerIndex: Number(event.detail.value) });
+  },
+
   async saveRoomName() {
     const roomName = this.data.roomNameInput.trim();
     if (!roomName) {
@@ -158,10 +185,16 @@ Page({
     }
     this.setData({ savingRoom: true });
     try {
+      const selectedSelfPlayer = this.data.selfPlayerOptions[this.data.selfPlayerIndex];
       await app.request({
-        path: `/api/poker/rooms/${encodeURIComponent(this.data.roomCode)}`,
+        path: `/api/mini/poker/ledgers/${encodeURIComponent(this.data.roomCode)}`,
         method: 'PATCH',
         data: { roomName },
+      });
+      await app.request({
+        path: `/api/mini/poker/ledgers/${encodeURIComponent(this.data.roomCode)}/self-player`,
+        method: 'PATCH',
+        data: { playerId: selectedSelfPlayer ? selectedSelfPlayer.id || null : null },
       });
       this.setData({ showRoomSettings: false });
       await this.loadRoom(false);
@@ -189,7 +222,7 @@ Page({
     this.setData({ addingPlayer: true });
     try {
       await app.request({
-        path: `/api/poker/rooms/${encodeURIComponent(this.data.roomCode)}/players`,
+        path: `/api/mini/poker/ledgers/${encodeURIComponent(this.data.roomCode)}/players`,
         method: 'POST',
         data: { name },
       });
@@ -213,7 +246,7 @@ Page({
         this.setData({ deletingPlayerId: id });
         try {
           await app.request({
-            path: `/api/poker/rooms/${encodeURIComponent(this.data.roomCode)}/players/${id}`,
+            path: `/api/mini/poker/ledgers/${encodeURIComponent(this.data.roomCode)}/players/${id}`,
             method: 'DELETE',
           });
           await this.loadRoom(false);
@@ -304,8 +337,8 @@ Page({
       const isEditing = Boolean(this.data.editingGameId);
       await app.request({
         path: isEditing
-          ? `/api/poker/rooms/${encodeURIComponent(this.data.roomCode)}/games/${this.data.editingGameId}`
-          : `/api/poker/rooms/${encodeURIComponent(this.data.roomCode)}/games`,
+          ? `/api/mini/poker/ledgers/${encodeURIComponent(this.data.roomCode)}/games/${this.data.editingGameId}`
+          : `/api/mini/poker/ledgers/${encodeURIComponent(this.data.roomCode)}/games`,
         method: isEditing ? 'PUT' : 'POST',
         data: { gameDate: this.data.gameDate, players },
       });
@@ -328,7 +361,7 @@ Page({
         if (!result.confirm) return;
         try {
           await app.request({
-            path: `/api/poker/rooms/${encodeURIComponent(this.data.roomCode)}/games/${gameId}`,
+            path: `/api/mini/poker/ledgers/${encodeURIComponent(this.data.roomCode)}/games/${gameId}`,
             method: 'DELETE',
           });
           this.setData({ expandedGameId: '' });
@@ -340,11 +373,4 @@ Page({
     });
   },
 
-  onShareAppMessage() {
-    const room = this.data.detail && this.data.detail.room;
-    return {
-      title: room ? `${room.roomName} · 德州账本` : '德州账本',
-      path: `/pages/poker/poker?roomCode=${this.data.roomCode}`,
-    };
-  },
 });

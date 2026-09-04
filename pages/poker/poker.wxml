@@ -21,6 +21,18 @@
     <view class="stat-item"><text class="stat-label">最近差额</text><text class="stat-value">{{detail.stats.latestGameBalanceDiffDisplay}}</text></view>
   </view>
 
+  <view class="section-title-row leaderboard-heading"><text class="section-title">参与者输赢排行</text></view>
+  <view wx:if="{{detail.leaderboard.length}}" class="leaderboard-list">
+    <view wx:for="{{detail.leaderboard}}" wx:key="playerId" class="leaderboard-row">
+      <view class="leaderboard-main">
+        <text class="leaderboard-rank">{{index + 1}}</text>
+        <view><text class="leaderboard-name">{{item.playerName}}{{item.isSelf ? '（我）' : ''}}</text><text class="leaderboard-note">赢 {{item.winDisplay}} / 输 {{item.lossDisplay}} · {{item.gameCount}} 局</text></view>
+      </view>
+      <text class="{{item.netClass}}">{{item.netDisplay}}</text>
+    </view>
+  </view>
+  <view wx:else class="empty-line">记录牌局后会显示参与者排行。</view>
+
   <view class="section-title-row">
     <text class="section-title">人员</text>
     <button class="text-button" size="mini" bindtap="togglePlayerManager">{{showPlayerManager ? '收起' : '管理人员'}}</button>
@@ -87,6 +99,10 @@
   <view class="sheet">
     <text class="sheet-title">账本设置</text>
     <input value="{{roomNameInput}}" bindinput="onRoomNameInput" placeholder="账本名称" class="input" maxlength="50" />
+    <text class="field-label">我在本账本中是</text>
+    <picker range="{{selfPlayerOptions}}" range-key="name" value="{{selfPlayerIndex}}" bindchange="onSelfPlayerChange" class="identity-picker">
+      <view>{{selfPlayerOptions[selfPlayerIndex].name}}</view>
+    </picker>
     <view class="sheet-actions">
       <button class="sheet-cancel" bindtap="closeRoomSettings">取消</button>
       <button class="sheet-confirm" loading="{{savingRoom}}" bindtap="saveRoomName">保存</button>

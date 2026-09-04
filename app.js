@@ -62,25 +62,23 @@ App({
     return result;
   },
 
-  async getPokerVisits() {
-    const deviceId = this.globalData.deviceId;
-    const result = await request({
-      path: `/api/room-visits?deviceId=${encodeURIComponent(deviceId)}&gameType=texas&limit=8`,
-    });
-    return result.visits || [];
+  async getPersonalDashboard() {
+    const [summary, poker, mahjong, opponents] = await Promise.all([
+      request({ path: '/api/mini/me/summary' }),
+      request({ path: '/api/mini/me/poker-ledgers' }),
+      request({ path: '/api/mini/me/mahjong-rooms' }),
+      request({ path: '/api/mini/me/mahjong-opponents' }),
+    ]);
+    return {
+      summary,
+      pokerLedgers: poker.ledgers || [],
+      mahjongRooms: mahjong.rooms || [],
+      opponents: opponents.opponents || [],
+    };
   },
 
-  recordPokerVisit(room) {
-    return request({
-      path: '/api/room-visits',
-      method: 'POST',
-      data: {
-        deviceId: this.globalData.deviceId,
-        roomId: room.id,
-        gameType: 'texas',
-        roomCode: room.roomCode,
-        roomName: room.roomName,
-      },
-    });
+  async getPersonalPokerLedgers() {
+    const result = await request({ path: '/api/mini/me/poker-ledgers' });
+    return result.ledgers || [];
   },
 });

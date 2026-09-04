@@ -9,11 +9,17 @@ Page({
     payeeIndex: 0,
     amount: '',
     submitting: false,
+    isArchived: false,
   },
 
   async onLoad(options) {
     const roomCode = (options.roomCode || '').toUpperCase();
     this.setData({ roomCode });
+    try {
+      await app.login();
+    } catch {
+      // loadRoom will still show the room if the identity service is temporarily unavailable.
+    }
     await this.loadRoom();
   },
 
@@ -28,12 +34,14 @@ Page({
 
   async loadRoom() {
     try {
-      await app.request({
+      const roomPreview = await app.request({
         path: `/api/mahjong/rooms/${this.data.roomCode}`,
       });
       const user = app.globalData.user;
       let detail;
-      if (user) {
+      if (roomPreview.room.dissolvedAt) {
+        detail = roomPreview;
+      } else if (user) {
         detail = await app.request({
           path: `/api/mahjong/rooms/${this.data.roomCode}/join`,
           method: 'POST',
@@ -44,6 +52,7 @@ Page({
           path: `/api/mahjong/rooms/${this.data.roomCode}`,
         });
       }
+      this.setData({ isArchived: Boolean(detail.room.dissolvedAt) });
       this.applyRoomDetail(detail);
     } catch (error) {
       wx.showToast({ title: error.message || '加载房间失败', icon: 'none' });
@@ -66,7 +75,10 @@ Page({
     ];
     const transactions = detail.transactions.map((transaction) => ({
       ...transaction,
-      canReverse: transaction.payerId === userId && !transaction.reversalOf,
+      canReverse:
+        !detail.room.dissolvedAt &&
+        transaction.payerId === userId &&
+        !transaction.reversalOf,
     }));
     this.setData({
       detail: { ...detail, transactions },

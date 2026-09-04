@@ -2,7 +2,7 @@
 <view wx:elif="{{detail}}" class="page">
   <view class="title-row">
     <text class="title">{{detail.room.name}}</text>
-    <text class="code">{{detail.room.roomCode}}</text>
+    <view><text wx:if="{{isArchived}}" class="archived-label">已归档</text><text class="code">{{detail.room.roomCode}}</text></view>
   </view>
   <view class="card">
     <text class="label">成员</text>
@@ -14,7 +14,7 @@
       <text>{{item.userName}}</text><text>{{item.balance}}</text>
     </view>
   </view>
-  <view class="card">
+  <view wx:if="{{!isArchived}}" class="card">
     <text class="label">记一笔</text>
     <picker range="{{payeeOptions}}" range-key="name" value="{{payeeIndex}}" bindchange="onPayeeChange" class="picker">
       <view>{{payeeOptions[payeeIndex].name}}</view>
@@ -22,6 +22,7 @@
     <input type="digit" value="{{amount}}" bindinput="onAmountInput" placeholder="金额" class="input" />
     <button class="primary" loading="{{submitting}}" bindtap="submitTransfer">确认记账</button>
   </view>
+  <view wx:else class="archive-notice">该麻将房已归档，仅可查看历史积分和流水。</view>
   <view class="card">
     <text class="label">流水</text>
     <view wx:for="{{detail.transactions}}" wx:key="id" class="row">

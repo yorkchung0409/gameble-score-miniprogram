@@ -1,0 +1,18 @@
+<view class="page">
+  <view class="section-heading"><text>新建德州账本</text></view>
+  <view class="form-block">
+    <input value="{{ledgerName}}" bindinput="onLedgerNameInput" placeholder="账本名称，例如：周末局" class="input" maxlength="50" />
+    <button class="primary-button" loading="{{creating}}" bindtap="createLedger">创建账本</button>
+  </view>
+
+  <view class="section-heading compact"><text>最近账本</text></view>
+  <view wx:if="{{recentLedger}}" class="recent-row" bindtap="openRecentLedger">
+    <view class="recent-main">
+      <text class="recent-name">{{recentLedger.room.roomName}}</text>
+      <text wx:if="{{recentLedger.selfPlayerId}}" class="recent-note">我的输赢 <text class="{{recentLedger.myNetClass}}">{{recentLedger.myNetDisplay}}</text></text>
+      <text wx:else class="recent-note">尚未设置本账本中的我</text>
+    </view>
+    <text class="open-label">打开</text>
+  </view>
+  <view wx:elif="{{!loading}}" class="empty-state">还没有账本</view>
+</view>

@@ -1,12 +1,8 @@
 .page { min-height: 100vh; box-sizing: border-box; padding: 36rpx 32rpx 72rpx; color: #222B26; }
-.section-note, .visit-code { color: #6B7A70; font-size: 24rpx; }
 .page-toolbar { display: flex; justify-content: flex-end; height: 56rpx; margin-bottom: 18rpx; }
 .guide-button, .guide-close { display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; }
 .guide-button::after, .guide-close::after { border: 0; }
 .guide-button { width: 56rpx; height: 56rpx; border: 1rpx solid #C8D4C9; border-radius: 50%; background: #FFFFFF; color: #1E7A46; font-size: 34rpx; font-weight: 700; line-height: 56rpx; }
-.game-switch { display: flex; height: 84rpx; margin-bottom: 42rpx; padding: 6rpx; box-sizing: border-box; background: #E8ECE6; border-radius: 10rpx; }
-.game-tab { flex: 1; display: flex; justify-content: center; align-items: center; color: #6B7A70; font-size: 29rpx; font-weight: 600; }
-.game-tab.active { background: #FFFFFF; color: #1E7A46; box-shadow: 0 1rpx 4rpx rgba(34, 43, 38, 0.12); }
 .section-heading { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 18rpx; font-size: 32rpx; font-weight: 700; }
 .section-heading.compact { margin-top: 42rpx; }
 .form-block, .profile-block { padding: 28rpx; border: 1rpx solid #E6EAE2; border-radius: 8rpx; background: #FFFFFF; }
@@ -17,11 +13,6 @@
 .primary-button, .secondary-button { margin: 0; border-radius: 8rpx; font-size: 29rpx; font-weight: 700; }
 .primary-button { background: #1E7A46; color: #FFFFFF; }
 .secondary-button { background: #E8ECE6; color: #222B26; }
-.visit-list { border-top: 1rpx solid #E6EAE2; }
-.visit-row { display: flex; justify-content: space-between; align-items: center; min-height: 116rpx; border-bottom: 1rpx solid #E6EAE2; }
-.visit-name { display: block; margin-bottom: 8rpx; font-size: 30rpx; font-weight: 600; }
-.visit-arrow { color: #1E7A46; font-size: 26rpx; }
-.empty-state { padding: 42rpx 0; border-top: 1rpx solid #E6EAE2; color: #6B7A70; font-size: 27rpx; text-align: center; }
 .guide-mask { position: fixed; z-index: 1000; top: 0; right: 0; bottom: 0; left: 0; display: flex; justify-content: center; align-items: center; padding: 48rpx; box-sizing: border-box; background: rgba(22, 31, 25, 0.5); }
 .guide-modal { width: 100%; max-height: 78vh; overflow: hidden; border: 1rpx solid #E6EAE2; border-radius: 8rpx; background: #FFFFFF; }
 .guide-header { display: flex; justify-content: space-between; align-items: center; min-height: 94rpx; padding: 0 28rpx; border-bottom: 1rpx solid #E6EAE2; }
