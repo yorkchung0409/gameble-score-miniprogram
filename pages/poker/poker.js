@@ -44,6 +44,7 @@ Page({
     gameDate: today(),
     gameRows: [],
     availableGamePlayers: [],
+    playerPickerOpen: false,
     savingGame: false,
   },
 
@@ -301,12 +302,28 @@ Page({
       gameRows,
       availableGamePlayers: this.data.detail.players.filter(
         (player) => !gameRows.some((row) => row.playerId === player.id),
-      ),
+      ).map((player) => ({
+        id: player.id,
+        name: player.name,
+        initial: (player.name || '?').slice(0, 1),
+      })),
+      playerPickerOpen: false,
     });
   },
 
   closeGameEditor() {
-    this.setData({ showGameEditor: false, editingGameId: '', gameRows: [], availableGamePlayers: [] });
+    this.setData({
+      showGameEditor: false,
+      editingGameId: '',
+      gameRows: [],
+      availableGamePlayers: [],
+      playerPickerOpen: false,
+    });
+  },
+
+  togglePlayerPicker() {
+    if (!this.data.availableGamePlayers.length) return;
+    this.setData({ playerPickerOpen: !this.data.playerPickerOpen });
   },
 
   onGameDateChange(event) {
@@ -314,7 +331,7 @@ Page({
   },
 
   onAddGamePlayer(event) {
-    const index = Number(event.detail.value);
+    const index = Number(event.currentTarget.dataset.index);
     const player = this.data.availableGamePlayers[index];
     if (!player) return;
     const gameRows = [
@@ -324,6 +341,7 @@ Page({
     this.setData({
       gameRows,
       availableGamePlayers: this.data.availableGamePlayers.filter((_, itemIndex) => itemIndex !== index),
+      playerPickerOpen: false,
     });
   },
 
@@ -335,6 +353,7 @@ Page({
     const availableGamePlayers = [...this.data.availableGamePlayers, {
       id: removed.playerId,
       name: removed.playerName,
+      initial: (removed.playerName || '?').slice(0, 1),
     }];
     this.setData({ gameRows, availableGamePlayers });
   },
