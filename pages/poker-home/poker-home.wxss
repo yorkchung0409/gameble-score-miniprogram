@@ -1,13 +1,13 @@
-.page { min-height: 100vh; box-sizing: border-box; padding: 42rpx 32rpx 72rpx; color: #222B26; }
-.section-heading { margin: 0 0 18rpx; font-size: 32rpx; font-weight: 700; }
-.section-heading.compact { margin-top: 46rpx; }
+.page { min-height: 100vh; box-sizing: border-box; padding: 48rpx 32rpx 210rpx; color: #222B26; }
+.section-heading { margin: 0 0 22rpx; font-size: 38rpx; font-weight: 700; }
+.section-heading.compact { margin-top: 52rpx; }
 .form-block { padding: 28rpx; border: 1rpx solid #E6EAE2; border-radius: 8rpx; background: #FFFFFF; }
-.input { height: 84rpx; box-sizing: border-box; width: 100%; margin-bottom: 18rpx; padding: 0 20rpx; border: 1rpx solid #DCE3DC; border-radius: 8rpx; background: #FFFFFF; font-size: 28rpx; }
-.primary-button { margin: 0; border-radius: 8rpx; background: #1E7A46; color: #FFFFFF; font-size: 29rpx; font-weight: 700; }
-.recent-row { display: flex; align-items: center; justify-content: space-between; min-height: 122rpx; border-top: 1rpx solid #E6EAE2; border-bottom: 1rpx solid #E6EAE2; }
+.input { height: 96rpx; box-sizing: border-box; width: 100%; margin-bottom: 20rpx; padding: 0 22rpx; border: 1rpx solid #DCE3DC; border-radius: 8rpx; background: #FFFFFF; font-size: 32rpx; }
+.primary-button { min-height: 96rpx; margin: 0; border-radius: 8rpx; background: #1E7A46; color: #FFFFFF; font-size: 33rpx; font-weight: 700; line-height: 96rpx; }
+.recent-row { display: flex; align-items: center; justify-content: space-between; min-height: 134rpx; border-top: 1rpx solid #E6EAE2; border-bottom: 1rpx solid #E6EAE2; }
 .recent-main { min-width: 0; }
-.recent-name { display: block; overflow: hidden; font-size: 30rpx; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.recent-note { display: block; margin-top: 10rpx; color: #6B7A70; font-size: 24rpx; }
-.open-label { flex: 0 0 auto; margin-left: 24rpx; color: #1E7A46; font-size: 26rpx; }
+.recent-name { display: block; overflow: hidden; font-size: 34rpx; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.recent-note { display: block; margin-top: 10rpx; color: #6B7A70; font-size: 28rpx; }
+.open-label { flex: 0 0 auto; margin-left: 24rpx; color: #1E7A46; font-size: 29rpx; }
 .positive { color: #167443; font-weight: 700; }.negative { color: #C43C35; font-weight: 700; }.neutral { color: #6B7A70; }
-.empty-state { padding: 42rpx 0; border-top: 1rpx solid #E6EAE2; color: #6B7A70; font-size: 27rpx; text-align: center; }
+.empty-state { padding: 46rpx 0; border-top: 1rpx solid #E6EAE2; color: #6B7A70; font-size: 30rpx; text-align: center; }
