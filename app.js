@@ -1,5 +1,5 @@
 const CLOUD_ENV = 'prod-d4giemw445109b899';
-const CLOUD_SERVICE = 'express-drsy';
+const CLOUD_SERVICE = 'gamescore';
 const DEVICE_ID_KEY = 'gameble_device_id';
 
 function getDeviceId() {
