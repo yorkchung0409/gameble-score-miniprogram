@@ -1,26 +1,67 @@
-<view wx:if="{{loading}}" class="loading">加载中...</view>
-
-<view wx:else class="page">
-  <view class="header">
-    <view class="avatar">{{userInitial}}</view>
-    <text class="name">{{user.name}}</text>
+<view class="page">
+  <view class="identity-row">
+    <view class="brand">
+      <text class="brand-title">牌局记账</text>
+      <text class="brand-caption">和熟人一起把每一局记清楚</text>
+    </view>
+    <view wx:if="{{user}}" class="user-chip">
+      <view class="avatar">{{userInitial}}</view>
+      <text>{{user.name}}</text>
+    </view>
   </view>
 
-  <view class="card" wx:if="{{user.name === '微信用户'}}">
-    <text class="label">设置昵称</text>
-    <input type="nickname" value="{{nickname}}" bindinput="onNicknameInput" placeholder="输入昵称" class="input" maxlength="30" />
-    <button class="primary" loading="{{savingProfile}}" bindtap="saveProfile">确认</button>
+  <view class="game-switch" role="tablist">
+    <view class="game-tab {{activeGame === 'poker' ? 'active' : ''}}" data-game="poker" bindtap="switchGame">德州扑克</view>
+    <view class="game-tab {{activeGame === 'mahjong' ? 'active' : ''}}" data-game="mahjong" bindtap="switchGame">麻将</view>
   </view>
 
-  <view class="card">
-    <text class="label">创建麻将房</text>
-    <input value="{{roomCode}}" bindinput="onRoomCodeInput" placeholder="房间码（选填）" class="input" maxlength="50" />
-    <button class="primary" loading="{{creating}}" bindtap="createRoom">创建房间</button>
-  </view>
+  <block wx:if="{{activeGame === 'poker'}}">
+    <view class="section-heading">
+      <text>新建德州账本</text>
+      <text class="section-note">创建后可分享账本码</text>
+    </view>
+    <view class="form-block">
+      <input value="{{pokerRoomName}}" bindinput="onPokerRoomNameInput" placeholder="账本名称，例如：周末局" class="input" maxlength="50" />
+      <input value="{{pokerRoomCode}}" bindinput="onPokerRoomCodeInput" placeholder="账本码（选填，留空自动生成）" class="input" maxlength="50" />
+      <button class="primary-button" loading="{{creatingPoker}}" bindtap="createPokerRoom">创建账本</button>
+    </view>
 
-  <view class="card">
-    <text class="label">加入麻将房</text>
-    <input value="{{joinCode}}" bindinput="onJoinCodeInput" placeholder="输入房间码" class="input" maxlength="50" />
-    <button class="secondary" loading="{{joining}}" bindtap="joinRoom">加入房间</button>
-  </view>
+    <view class="section-heading compact"><text>打开已有账本</text></view>
+    <view class="form-block">
+      <input value="{{pokerJoinCode}}" bindinput="onPokerJoinCodeInput" placeholder="输入账本码" class="input code-input" maxlength="50" />
+      <button class="secondary-button" loading="{{joiningPoker}}" bindtap="joinPokerRoom">打开账本</button>
+    </view>
+
+    <view class="section-heading compact"><text>最近账本</text></view>
+    <view wx:if="{{pokerVisits.length}}" class="visit-list">
+      <view wx:for="{{pokerVisits}}" wx:key="roomId" class="visit-row" data-code="{{item.roomCode}}" bindtap="openPokerVisit">
+        <view>
+          <text class="visit-name">{{item.roomName}}</text>
+          <text class="visit-code">{{item.roomCode}}</text>
+        </view>
+        <text class="visit-arrow">打开</text>
+      </view>
+    </view>
+    <view wx:else class="empty-state">还没有最近账本</view>
+  </block>
+
+  <block wx:else>
+    <view wx:if="{{needsNickname}}" class="profile-block">
+      <text class="block-title">设置麻将昵称</text>
+      <input type="nickname" value="{{nickname}}" bindinput="onNicknameInput" placeholder="输入昵称" class="input" maxlength="30" />
+      <button class="secondary-button" loading="{{savingProfile}}" bindtap="saveProfile">保存昵称</button>
+    </view>
+
+    <view class="section-heading"><text>创建麻将房</text></view>
+    <view class="form-block">
+      <input value="{{mahjongRoomCode}}" bindinput="onMahjongRoomCodeInput" placeholder="房间码（选填）" class="input code-input" maxlength="50" />
+      <button class="primary-button" loading="{{creatingMahjong}}" bindtap="createMahjongRoom">创建房间</button>
+    </view>
+
+    <view class="section-heading compact"><text>加入麻将房</text></view>
+    <view class="form-block">
+      <input value="{{mahjongJoinCode}}" bindinput="onMahjongJoinCodeInput" placeholder="输入房间码" class="input code-input" maxlength="50" />
+      <button class="secondary-button" loading="{{joiningMahjong}}" bindtap="joinMahjongRoom">加入房间</button>
+    </view>
+  </block>
 </view>

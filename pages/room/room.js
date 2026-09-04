@@ -21,6 +21,11 @@ Page({
     if (this.data.roomCode) await this.loadRoom();
   },
 
+  async onPullDownRefresh() {
+    await this.loadRoom();
+    wx.stopPullDownRefresh();
+  },
+
   async loadRoom() {
     try {
       await app.request({

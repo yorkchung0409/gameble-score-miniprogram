@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "麻将房"
+  "navigationBarTitleText": "麻将房",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark"
 }

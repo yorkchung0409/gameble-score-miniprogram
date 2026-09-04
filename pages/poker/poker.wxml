@@ -1,0 +1,118 @@
+<view wx:if="{{loading}}" class="loading">正在加载账本...</view>
+
+<view wx:elif="{{loadError}}" class="load-failure">
+  <text>{{loadError}}</text>
+  <button class="retry-button" bindtap="loadRoom">重新加载</button>
+</view>
+
+<view wx:elif="{{detail}}" class="page">
+  <view class="room-header">
+    <view>
+      <text class="room-name">{{detail.room.roomName}}</text>
+      <text class="room-code">账本码 {{detail.room.roomCode}}</text>
+    </view>
+    <button class="header-button" size="mini" bindtap="openRoomSettings">设置</button>
+  </view>
+
+  <view class="stats-grid">
+    <view class="stat-item"><text class="stat-label">总场次</text><text class="stat-value">{{detail.stats.totalGames}}</text></view>
+    <view class="stat-item"><text class="stat-label">总买入</text><text class="stat-value">{{detail.stats.totalBuyInDisplay}}</text></view>
+    <view class="stat-item"><text class="stat-label">最近流水</text><text class="stat-value">{{detail.stats.latestGameTurnoverDisplay}}</text></view>
+    <view class="stat-item"><text class="stat-label">最近差额</text><text class="stat-value">{{detail.stats.latestGameBalanceDiffDisplay}}</text></view>
+  </view>
+
+  <view class="section-title-row">
+    <text class="section-title">人员</text>
+    <button class="text-button" size="mini" bindtap="togglePlayerManager">{{showPlayerManager ? '收起' : '管理人员'}}</button>
+  </view>
+  <view wx:if="{{detail.players.length}}" class="player-list">
+    <view wx:for="{{detail.players}}" wx:key="id" class="player-chip">
+      <view class="player-avatar">{{item.initial}}</view>
+      <text>{{item.name}}</text>
+    </view>
+  </view>
+  <view wx:else class="empty-line">还没有人员，先添加参与牌局的人。</view>
+
+  <view wx:if="{{showPlayerManager}}" class="manager-panel">
+    <view class="manager-add">
+      <input value="{{playerName}}" bindinput="onPlayerNameInput" placeholder="人员姓名" class="input" maxlength="100" />
+      <button class="add-button" loading="{{addingPlayer}}" bindtap="addPlayer">添加</button>
+    </view>
+    <view wx:for="{{detail.players}}" wx:key="id" class="manager-row">
+      <text>{{item.name}}</text>
+      <button class="danger-button" size="mini" loading="{{deletingPlayerId === item.id}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="deletePlayer">删除</button>
+    </view>
+  </view>
+
+  <button class="record-button" disabled="{{!detail.players.length}}" bindtap="openNewGame">记录一局</button>
+
+  <view class="section-title-row games-heading"><text class="section-title">牌局记录</text></view>
+  <view wx:if="{{detail.games.length}}" class="game-list">
+    <view wx:for="{{detail.games}}" wx:key="id" class="game-item">
+      <view class="game-summary" data-id="{{item.id}}" bindtap="toggleGame">
+        <view>
+          <text class="game-date">{{item.gameDate}}</text>
+          <text class="game-subtitle">{{item.playerCount}} 人 · 流水 {{item.turnoverDisplay}}</text>
+        </view>
+        <view class="balance-state {{item.isBalanced ? 'balanced' : 'unbalanced'}}">{{item.isBalanced ? '已平衡' : '有差额'}}</view>
+      </view>
+
+      <view wx:if="{{item.expanded}}" class="game-detail">
+        <view class="game-totals">
+          <text>总买入 {{item.totalBuyInDisplay}}</text>
+          <text>赢 {{item.winDisplay}} / 输 {{item.lossDisplay}}</text>
+        </view>
+        <view class="game-table-head"><text>人员</text><text>买入</text><text>结余</text><text>净盈亏</text></view>
+        <view wx:for="{{item.players}}" wx:key="id" class="game-table-row">
+          <text class="player-name">{{item.playerName}}</text>
+          <text>{{item.buyInDisplay}}</text>
+          <text>{{item.balanceDisplay}}</text>
+          <text class="{{item.netClass}}">{{item.netDisplay}}</text>
+        </view>
+        <view class="game-footer">
+          <text wx:if="{{item.isBalanced}}" class="balanced">本局已平衡</text>
+          <text wx:else class="unbalanced">差额 {{item.balanceDifferenceDisplay}}</text>
+          <view class="game-actions">
+            <button class="text-button" size="mini" data-id="{{item.id}}" catchtap="openGameEditor">编辑</button>
+            <button class="danger-button" size="mini" data-id="{{item.id}}" catchtap="deleteGame">删除</button>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view wx:else class="empty-state">还没有牌局记录</view>
+</view>
+
+<view wx:if="{{showRoomSettings}}" class="overlay">
+  <view class="sheet">
+    <text class="sheet-title">账本设置</text>
+    <input value="{{roomNameInput}}" bindinput="onRoomNameInput" placeholder="账本名称" class="input" maxlength="50" />
+    <view class="sheet-actions">
+      <button class="sheet-cancel" bindtap="closeRoomSettings">取消</button>
+      <button class="sheet-confirm" loading="{{savingRoom}}" bindtap="saveRoomName">保存</button>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{showGameEditor}}" class="overlay">
+  <view class="sheet game-editor">
+    <view class="sheet-heading"><text class="sheet-title">{{editingGameId ? '编辑牌局' : '记录一局'}}</text><text class="sheet-note">未勾选的人员不计入本局</text></view>
+    <picker mode="date" value="{{gameDate}}" bindchange="onGameDateChange" class="date-picker"><view>{{gameDate}}</view></picker>
+    <scroll-view scroll-y class="player-editor-list">
+      <view wx:for="{{gameRows}}" wx:key="playerId" class="editor-row">
+        <switch checked="{{item.selected}}" color="#1E7A46" data-index="{{index}}" bindchange="toggleGamePlayer" />
+        <view class="editor-fields">
+          <text class="editor-name">{{item.playerName}}</text>
+          <view class="amount-inputs">
+            <input type="digit" value="{{item.buyIn}}" data-index="{{index}}" bindinput="onGameBuyInInput" placeholder="买入" class="small-input" />
+            <input type="digit" value="{{item.balance}}" data-index="{{index}}" bindinput="onGameBalanceInput" placeholder="结余" class="small-input" />
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="sheet-actions">
+      <button class="sheet-cancel" bindtap="closeGameEditor">取消</button>
+      <button class="sheet-confirm" loading="{{savingGame}}" bindtap="saveGame">保存牌局</button>
+    </view>
+  </view>
+</view>
