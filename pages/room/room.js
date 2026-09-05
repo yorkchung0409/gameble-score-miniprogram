@@ -1,6 +1,11 @@
 const app = getApp();
 
-const SEAT_NAMES = ['东位', '南位', '西位', '北位'];
+const SEAT_LAYOUT = [
+  { seatIndex: 3, seatName: '北', position: 'north' },
+  { seatIndex: 0, seatName: '东', position: 'east' },
+  { seatIndex: 1, seatName: '南', position: 'south' },
+  { seatIndex: 2, seatName: '西', position: 'west' },
+];
 
 function formatBalance(value) {
   const amount = Number(value) || 0;
@@ -262,19 +267,24 @@ Page({
     const isOwner = Boolean(userId && detail.room.creatorUserId === userId);
     const currentSeat = detail.seats.find((seat) => seat.userId === userId);
     const seatMap = new Map(detail.seats.map((seat) => [seat.seatIndex, seat]));
-    const seatCards = SEAT_NAMES.map((name, seatIndex) => {
+    const balances = detail.stats.balances || [];
+    const balanceMap = new Map(balances.map((balance) => [balance.userId, balance.balance]));
+    const seatCards = SEAT_LAYOUT.map(({ seatIndex, seatName, position }) => {
       const seat = seatMap.get(seatIndex);
+      const balance = Number(balanceMap.get(seat?.userId) || 0);
       return {
         seatIndex,
-        seatName: name,
+        seatName,
+        position,
         occupied: Boolean(seat),
         userId: seat?.userId || '',
         userName: seat?.userName || '',
         isMe: Boolean(seat && seat.userId === userId),
         initial: (seat?.userName || '空').slice(0, 1),
+        balance,
+        balanceDisplay: formatBalance(balance),
       };
     });
-    const balances = detail.stats.balances || [];
     const memberRows = (detail.members || []).map((member) => {
       const balance = balances.find((item) => item.userId === member.userId);
       return {

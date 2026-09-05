@@ -25,16 +25,17 @@
   </view>
 
   <view wx:else class="panel seat-panel">
-    <view class="panel-heading"><text>座位</text><button wx:if="{{isOwner}}" class="text-action" bindtap="openModeDialog">切换模式</button></view>
-    <view class="seat-grid">
-      <view wx:for="{{seatCards}}" wx:key="seatIndex" class="seat-card {{item.isMe ? 'selected-seat' : ''}}">
+    <view class="panel-heading"><text>方位座位</text><button wx:if="{{isOwner}}" class="text-action" bindtap="openModeDialog">切换模式</button></view>
+    <view class="seat-board">
+      <view class="mahjong-table"><view class="table-mark">雀</view><text class="table-mode">坐下模式</text></view>
+      <view wx:for="{{seatCards}}" wx:key="seatIndex" class="seat-card seat-{{item.position}} {{item.isMe ? 'selected-seat' : ''}}">
         <text class="seat-name">{{item.seatName}}</text>
-        <view wx:if="{{item.occupied}}" class="seat-avatar {{item.isMe ? 'my-seat' : ''}}">{{item.initial}}</view>
-        <view wx:else class="empty-seat">空位</view>
         <text wx:if="{{item.occupied}}" class="seat-user">{{item.userName}}{{item.isMe ? '（我）' : ''}}</text>
-        <button wx:if="{{item.occupied && item.isMe}}" class="seat-action leave-seat" bindtap="leaveSeat">离座</button>
-        <button wx:elif="{{item.occupied && currentUserSeated && !item.isMe}}" class="seat-action transfer-seat" data-id="{{item.userId}}" bindtap="openTransfer">转账</button>
-        <button wx:elif="{{!item.occupied}}" class="seat-action sit-seat" data-index="{{item.seatIndex}}" bindtap="sitDown">入座</button>
+        <view wx:if="{{item.occupied}}" class="seat-score"><text class="score-caption">输赢积分</text><text class="seat-score-value {{item.balance > 0 ? 'positive' : item.balance < 0 ? 'negative' : ''}}">{{item.balanceDisplay}}</text></view>
+        <view wx:else class="empty-seat">空位</view>
+        <button wx:if="{{item.occupied && item.isMe}}" class="seat-action leave-seat" bindtap="leaveSeat" aria-label="离座">离座</button>
+        <button wx:elif="{{item.occupied && currentUserSeated && !item.isMe}}" class="seat-action transfer-seat" data-id="{{item.userId}}" bindtap="openTransfer" aria-label="转账">转账</button>
+        <button wx:elif="{{!item.occupied && !currentUserSeated && !isArchived}}" class="seat-action sit-seat" data-index="{{item.seatIndex}}" bindtap="sitDown">入座</button>
       </view>
     </view>
   </view>
