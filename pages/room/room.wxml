@@ -31,7 +31,7 @@
       <view wx:for="{{seatCards}}" wx:key="seatIndex" class="seat-card seat-{{item.position}} {{item.isMe ? 'selected-seat' : ''}}">
         <text class="seat-name">{{item.seatName}}</text>
         <text wx:if="{{item.occupied}}" class="seat-user">{{item.userName}}{{item.isMe ? '（我）' : ''}}</text>
-        <view wx:if="{{item.occupied}}" class="seat-score"><text class="score-caption">输赢积分</text><text class="seat-score-value {{item.balance > 0 ? 'positive' : item.balance < 0 ? 'negative' : ''}}">{{item.balanceDisplay}}</text></view>
+        <view wx:if="{{item.occupied}}" class="seat-score"><text class="seat-score-value {{item.balance > 0 ? 'positive' : item.balance < 0 ? 'negative' : ''}}">{{item.balanceDisplay}}</text></view>
         <view wx:else class="empty-seat">空位</view>
         <button wx:if="{{item.occupied && item.isMe}}" class="seat-action leave-seat" bindtap="leaveSeat" aria-label="离座">离座</button>
         <button wx:elif="{{item.occupied && currentUserSeated && !item.isMe}}" class="seat-action transfer-seat" data-id="{{item.userId}}" bindtap="openTransfer" aria-label="转账">转账</button>
