@@ -27,7 +27,7 @@
   <view wx:else class="panel seat-panel">
     <view class="panel-heading"><text>方位座位</text><button wx:if="{{isOwner}}" class="text-action" bindtap="openModeDialog">切换模式</button></view>
     <view class="seat-board">
-      <view class="mahjong-table"><view class="table-mark">雀</view></view>
+      <view class="mahjong-table" bindtap="openTeaFeeTransfer" aria-label="支付茶水费"><view class="table-mark">茶</view><text class="tea-fee-label">茶水费</text></view>
       <view wx:for="{{seatCards}}" wx:key="seatIndex" class="seat-card seat-{{item.position}} {{item.isMe ? 'selected-seat' : ''}}">
         <text class="seat-name">{{item.seatName}}</text>
         <text wx:if="{{item.occupied}}" class="seat-user">{{item.userName}}{{item.isMe ? '（我）' : ''}}</text>

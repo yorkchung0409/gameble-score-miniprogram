@@ -428,6 +428,10 @@ Page({
     this.openTransfer({ currentTarget: { dataset: { id: '' } } });
   },
 
+  openTeaFeeTransfer() {
+    this.openTransfer({ currentTarget: { dataset: { id: 'tea_fee' } } });
+  },
+
   closeTransfer() {
     this.setData({ transferOpen: false });
   },
