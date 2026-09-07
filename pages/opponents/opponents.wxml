@@ -1,0 +1,25 @@
+<view wx:if="{{loading}}" class="loading">加载对手战绩...</view>
+
+<view wx:elif="{{loadError}}" class="load-failure">
+  <text>{{loadError}}</text>
+  <button class="retry-button" bindtap="loadOpponents">重新加载</button>
+</view>
+
+<view wx:else class="page">
+  <view wx:if="{{syncWarning}}" class="sync-warning">{{syncWarning}}</view>
+  <view class="page-heading"><text class="page-title">麻将对手战绩</text><text class="page-count">{{total}} 人</text></view>
+  <view wx:if="{{opponents.length}}" class="opponent-list">
+    <view wx:for="{{opponents}}" wx:key="userId" class="opponent-row">
+      <view class="opponent-main">
+        <text class="opponent-name">{{item.userName}}</text>
+        <text class="opponent-note">赢 {{item.winDisplay}} / 输 {{item.lossDisplay}} · {{item.roomCount}} 房</text>
+      </view>
+      <view class="opponent-side">
+        <text class="opponent-net {{item.netClass}}">{{item.netDisplay}}</text>
+        <text class="opponent-date">{{item.lastPlayedDisplay}}</text>
+      </view>
+    </view>
+    <button wx:if="{{hasMore}}" class="load-more" loading="{{loadingMore}}" disabled="{{loadingMore}}" bindtap="loadMore">查看更多对手</button>
+  </view>
+  <view wx:else class="empty-state">还没有对手战绩</view>
+</view>

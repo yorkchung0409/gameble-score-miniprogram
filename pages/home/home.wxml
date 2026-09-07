@@ -1,11 +1,14 @@
 <view class="page">
   <view class="page-toolbar">
-    <button class="guide-button" bindtap="openGuide" aria-label="使用说明">?</button>
+    <button class="guide-button" bindtap="openGuide" aria-label="使用说明">
+      <text class="guide-label">说明</text>
+      <text class="guide-mark">?</text>
+    </button>
   </view>
 
   <view class="entry-section">
     <text class="section-heading">麻将记分</text>
-    <button class="action-button mahjong-button" bindtap="openMahjongCreate">创建房间</button>
+    <button class="action-button mahjong-button" loading="{{creatingMahjong}}" disabled="{{creatingMahjong}}" bindtap="openMahjongCreate">创建房间</button>
     <button class="action-button secondary-action" bindtap="openMahjongJoin">加入房间</button>
   </view>
 
@@ -13,16 +16,29 @@
     <text class="section-heading">扑克记账</text>
     <button class="action-button poker-button" bindtap="openPokerCreate">创建账本</button>
   </view>
-</view>
 
-<view wx:if="{{showMahjongCreate}}" class="sheet-mask" bindtap="closeMahjongCreate">
-  <view class="action-sheet" catchtap="preventSheetClose">
-    <text class="sheet-title">创建房间</text>
-    <input value="{{mahjongRoomCode}}" bindinput="onMahjongRoomCodeInput" placeholder="房间码（选填，留空自动生成）" class="sheet-input code-input" maxlength="50" />
-    <view class="sheet-actions">
-      <button class="sheet-cancel" bindtap="closeMahjongCreate">取消</button>
-      <button class="sheet-confirm mahjong-button" loading="{{creatingMahjong}}" bindtap="createMahjongRoom">创建房间</button>
+  <view wx:if="{{recentLoaded}}" class="recent-section">
+    <view class="recent-heading">
+      <text class="recent-title">最近房间</text>
+      <text class="recent-more" data-type="mahjong" bindtap="openRecentHistory">更多</text>
     </view>
+    <view wx:if="{{recentMahjongRoom}}" class="recent-row" data-code="{{recentMahjongRoom.roomCode}}" bindtap="openRecentMahjong">
+      <text class="recent-name">房间 {{recentMahjongRoom.roomCode}}</text>
+      <text class="recent-enter mahjong-enter">进入</text>
+    </view>
+    <text wx:else class="recent-empty">暂无活跃房间</text>
+  </view>
+
+  <view wx:if="{{recentLoaded}}" class="recent-section recent-ledger-section">
+    <view class="recent-heading">
+      <text class="recent-title">最近账本</text>
+      <text class="recent-more" data-type="poker" bindtap="openRecentHistory">更多</text>
+    </view>
+    <view wx:if="{{recentPokerLedger}}" class="recent-row" data-code="{{recentPokerLedger.room.roomCode}}" bindtap="openRecentPoker">
+      <text class="recent-name">{{recentPokerLedger.room.roomName}}</text>
+      <text class="recent-enter">进入</text>
+    </view>
+    <text wx:else class="recent-empty">暂无账本</text>
   </view>
 </view>
 
@@ -32,7 +48,7 @@
     <input value="{{mahjongJoinCode}}" bindinput="onMahjongJoinCodeInput" placeholder="输入房间码" class="input code-input" maxlength="50" />
     <view class="sheet-actions">
       <button class="sheet-cancel" bindtap="closeMahjongJoin">取消</button>
-      <button class="sheet-confirm mahjong-button" loading="{{joiningMahjong}}" bindtap="joinMahjongRoom">加入房间</button>
+      <button class="sheet-confirm mahjong-button" loading="{{joiningMahjong}}" disabled="{{joiningMahjong}}" bindtap="joinMahjongRoom">加入房间</button>
     </view>
   </view>
 </view>
@@ -43,7 +59,7 @@
     <input value="{{pokerLedgerName}}" bindinput="onPokerLedgerNameInput" placeholder="账本名称" class="sheet-input" maxlength="50" />
     <view class="sheet-actions">
       <button class="sheet-cancel" bindtap="closePokerCreate">取消</button>
-      <button class="sheet-confirm poker-button" loading="{{creatingPoker}}" bindtap="createPokerLedger">创建账本</button>
+      <button class="sheet-confirm poker-button" loading="{{creatingPoker}}" disabled="{{creatingPoker}}" bindtap="createPokerLedger">创建账本</button>
     </view>
   </view>
 </view>
@@ -55,8 +71,13 @@
       <button class="guide-close" bindtap="closeGuide" aria-label="关闭使用说明">×</button>
     </view>
     <scroll-view class="guide-body" scroll-y>
+      <view class="guide-intro">
+        <text class="guide-intro-text">谢谢您的支持，打牌记分房是一个牌局记账工具。辅助您记录牌局中各位玩家的分数变化，是一个辅助性记账工具。</text>
+        <text class="guide-intro-warning">小程序中不涉及任何金钱操作，小程序内所有的“转账”字眼仅作为记账描述，不会直接操作您的微信钱包或任何您的个人资产。禁止将小程序用于违法行为，一经发现或举报，我司有权封禁您小程序账号，请自觉遵守中华人民共和国法律法规。</text>
+      </view>
       <view class="guide-section">
         <text class="guide-section-title">麻将</text>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>创建房间后会自动生成房间码，可复制给其他人加入。</text></view>
         <view class="guide-item"><text class="guide-bullet">·</text><text>进入房间即成为成员，点头像可互相转账；茶水费为虚拟账户。</text></view>
         <view class="guide-item"><text class="guide-bullet">·</text><text>房主可在普通、坐下模式间切换；坐下模式需四家入座，切换时按提示入座或离座。</text></view>
         <view class="guide-item"><text class="guide-bullet">·</text><text>转错账只能冲正自己付款的记录；30 分钟无转账会自动解散，账目仍会归档。</text></view>
@@ -64,7 +85,7 @@
       </view>
 
       <view class="guide-section">
-        <text class="guide-section-title">德州</text>
+        <text class="guide-section-title">扑克</text>
         <view class="guide-item"><text class="guide-bullet">·</text><text>账本是创建者个人使用的记账本，不与他人协作。</text></view>
         <view class="guide-item"><text class="guide-bullet">·</text><text>记录玩家买入和结余即可自动计算净盈亏；历史可查看日期、人数和明细。</text></view>
       </view>

@@ -8,13 +8,27 @@
 <view wx:else class="page">
   <view class="page-title">历史记录</view>
   <view class="segmented">
-    <view class="segment {{activeType == 'all' ? 'selected' : ''}}" data-type="all" bindtap="switchType">全部</view>
-    <view class="segment {{activeType == 'poker' ? 'selected' : ''}}" data-type="poker" bindtap="switchType">扑克账本</view>
     <view class="segment {{activeType == 'mahjong' ? 'selected' : ''}}" data-type="mahjong" bindtap="switchType">麻将房</view>
+    <view class="segment {{activeType == 'poker' ? 'selected' : ''}}" data-type="poker" bindtap="switchType">扑克账本</view>
   </view>
 
-  <block wx:if="{{activeType == 'all' || activeType == 'poker'}}">
-    <view class="section-title"><text>扑克账本</text><text class="section-count">{{pokerLedgers.length}} 本</text></view>
+  <block wx:if="{{activeType == 'mahjong'}}">
+    <view class="section-title"><text>麻将房</text><text class="section-count">{{mahjongTotal}} 房</text></view>
+    <view wx:if="{{mahjongRooms.length}}" class="history-list">
+      <view wx:for="{{mahjongRooms}}" wx:key="roomCode" class="history-row" data-code="{{item.roomCode}}" bindtap="openMahjongRoom">
+        <view class="history-main">
+          <text class="history-name">房间 {{item.roomCode}}</text>
+          <text class="history-note"><text class="room-state {{item.roomStateClass}}">{{item.roomState}}</text> · 最近活动 {{item.lastActivityDisplay}}</text>
+        </view>
+        <text class="{{item.netClass}} history-value">{{item.netDisplay}}</text>
+      </view>
+    </view>
+    <view wx:else class="empty-state">还没有麻将房记录</view>
+    <button wx:if="{{mahjongHasMore}}" class="load-more" data-type="mahjong" bindtap="loadMore" loading="{{loadingMore}}">加载更多</button>
+  </block>
+
+  <block wx:if="{{activeType == 'poker'}}">
+    <view class="section-title"><text>扑克账本</text><text class="section-count">{{pokerTotal}} 本</text></view>
     <view wx:if="{{pokerLedgers.length}}" class="history-list">
       <view wx:for="{{pokerLedgers}}" wx:key="id" class="history-row" data-code="{{item.room.roomCode}}" bindtap="openPokerLedger">
         <view class="history-main">
@@ -26,23 +40,7 @@
         <text class="{{item.netClass}} history-value">{{item.netDisplay}}</text>
       </view>
     </view>
-    <view wx:else class="empty-state">还没有德州账本</view>
+    <view wx:else class="empty-state">还没有扑克账本</view>
     <button wx:if="{{pokerHasMore}}" class="load-more" data-type="poker" bindtap="loadMore" loading="{{loadingMore}}">加载更多</button>
-  </block>
-
-  <block wx:if="{{activeType == 'all' || activeType == 'mahjong'}}">
-    <view class="section-title"><text>麻将房</text><text class="section-count">{{mahjongRooms.length}} 房</text></view>
-    <view wx:if="{{mahjongRooms.length}}" class="history-list">
-      <view wx:for="{{mahjongRooms}}" wx:key="roomCode" class="history-row" data-code="{{item.roomCode}}" bindtap="openMahjongRoom">
-        <view class="history-main">
-          <text class="history-name">{{item.roomName}}</text>
-          <text class="history-code">{{item.roomCode}}</text>
-          <text class="history-note"><text class="room-state {{item.roomStateClass}}">{{item.roomState}}</text> · 最近活动 {{item.lastActivityDisplay}}</text>
-        </view>
-        <text class="{{item.netClass}} history-value">{{item.netDisplay}}</text>
-      </view>
-    </view>
-    <view wx:else class="empty-state">还没有麻将房记录</view>
-    <button wx:if="{{mahjongHasMore}}" class="load-more" data-type="mahjong" bindtap="loadMore" loading="{{loadingMore}}">加载更多</button>
   </block>
 </view>

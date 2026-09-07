@@ -1,27 +1,12 @@
 const app = getApp();
-
-function formatNet(value) {
-  const amount = Number(value || 0);
-  const absolute = Math.abs(amount).toFixed(2);
-  return `${amount > 0 ? '+' : amount < 0 ? '-' : ''}${absolute}`;
-}
+const { displayDate, formatNet } = require('../../utils/format');
 
 function decorateNet(item, key = 'netProfit') {
   const value = Number(item[key] || 0);
-  return {
-    ...item,
+  return Object.assign({}, item, {
     netDisplay: formatNet(item[key]),
     netClass: value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral',
-  };
-}
-
-function displayDate(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
+  });
 }
 
 Page({
@@ -35,9 +20,7 @@ Page({
     summary: null,
     pokerLedgers: [],
     mahjongRooms: [],
-    opponents: [],
-    opponentDetail: null,
-    opponentLoading: false,
+    syncWarning: '',
   },
 
   async onShow() {
@@ -52,6 +35,14 @@ Page({
   },
 
   async loadProfile() {
+    if (this.profileLoadPromise) return this.profileLoadPromise;
+    this.profileLoadPromise = this.performLoadProfile().finally(() => {
+      this.profileLoadPromise = null;
+    });
+    return this.profileLoadPromise;
+  },
+
+  async performLoadProfile() {
     try {
       const login = await app.login();
       const dashboard = await app.getPersonalDashboard({ historyLimit: 1 });
@@ -59,6 +50,7 @@ Page({
       this.setData({
         loading: false,
         loadError: '',
+        syncWarning: '',
         user,
         nickname: user.name === '微信用户' ? '' : user.name,
         needsNickname: user.name === '微信用户',
@@ -69,19 +61,19 @@ Page({
         mahjongRooms: dashboard.mahjongRooms
           .map((room) => this.decorateMahjongRoom(room))
           .slice(0, 1),
-        opponents: dashboard.opponents.map((opponent) => ({
-          ...decorateNet(opponent),
-          lastPlayedDisplay: displayDate(opponent.lastPlayedAt),
-        })),
       });
     } catch (error) {
-      this.setData({ loading: false, loadError: error.message || '个人数据加载失败' });
+      const message = error.message || '个人数据加载失败';
+      if (this.data.summary) {
+        this.setData({ loading: false, syncWarning: '刷新暂时失败，当前显示上次成功加载的数据' });
+      } else {
+        this.setData({ loading: false, loadError: message });
+      }
     }
   },
 
   decorateSummary(summary) {
-    return {
-      ...summary,
+    return Object.assign({}, summary, {
       totalNetDisplay: formatNet(summary.totalNetProfit),
       pokerNetDisplay: formatNet(summary.poker.netProfit),
       mahjongNetDisplay: formatNet(summary.mahjong.netProfit),
@@ -89,26 +81,25 @@ Page({
       pokerNetClass: Number(summary.poker.netProfit) > 0 ? 'positive' : Number(summary.poker.netProfit) < 0 ? 'negative' : 'neutral',
       mahjongNetClass: Number(summary.mahjong.netProfit) > 0 ? 'positive' : Number(summary.mahjong.netProfit) < 0 ? 'negative' : 'neutral',
       teaFeeDisplay: Number(summary.mahjong.teaFeeTotal || 0).toFixed(2),
-    };
+    });
   },
 
   decoratePokerLedger(ledger) {
-    return {
-      ...ledger,
-      id: ledger.room.id,
-      ...decorateNet(ledger, 'myNetProfit'),
-      updatedDisplay: displayDate(ledger.room.updatedAt),
-    };
+    return Object.assign(
+      {},
+      ledger,
+      { id: ledger.room.id },
+      decorateNet(ledger, 'myNetProfit'),
+      { updatedDisplay: displayDate(ledger.room.updatedAt) },
+    );
   },
 
   decorateMahjongRoom(room) {
-    return {
-      ...room,
-      ...decorateNet(room),
+    return Object.assign({}, room, decorateNet(room), {
       lastActivityDisplay: displayDate(room.lastActivityAt),
       roomState: room.dissolvedAt ? '已归档' : '进行中',
       roomStateClass: room.dissolvedAt ? 'archived' : 'active',
-    };
+    });
   },
 
   onNicknameInput(event) {
@@ -116,6 +107,7 @@ Page({
   },
 
   async saveProfile() {
+    if (this.data.savingProfile) return;
     const name = this.data.nickname.trim();
     if (!name) {
       wx.showToast({ title: '请填写昵称', icon: 'none' });
@@ -148,31 +140,11 @@ Page({
   },
 
   openHistory(event) {
-    const type = event.currentTarget.dataset.type || 'all';
+    const type = event.currentTarget.dataset.type === 'poker' ? 'poker' : 'mahjong';
     wx.navigateTo({ url: `/pages/history/history?type=${type}` });
   },
 
-  openOpponent(event) {
-    const opponentId = event.currentTarget.dataset.id;
-    if (!opponentId) return;
-    const opponent = this.data.opponents.find((item) => item.userId === opponentId);
-    if (!opponent) return;
-    this.setData({
-      opponentLoading: false,
-      opponentDetail: {
-        opponentName: opponent.userName,
-        netDisplay: opponent.netDisplay,
-        netClass: opponent.netClass,
-        winDisplay: Number(opponent.winTotal || 0).toFixed(2),
-        lossDisplay: Number(opponent.lossTotal || 0).toFixed(2),
-        roomCount: opponent.roomCount,
-      },
-    });
+  openOpponents() {
+    wx.navigateTo({ url: '/pages/opponents/opponents' });
   },
-
-  closeOpponent() {
-    this.setData({ opponentDetail: null, opponentLoading: false });
-  },
-
-  preventClose() {},
 });

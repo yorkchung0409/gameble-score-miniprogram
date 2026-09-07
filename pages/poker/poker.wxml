@@ -14,6 +14,8 @@
     <button class="header-button" size="mini" bindtap="openRoomSettings">设置</button>
   </view>
 
+  <view wx:if="{{syncWarning}}" class="sync-warning">{{syncWarning}}</view>
+
   <view class="stats-grid">
     <view class="stat-item"><text class="stat-label">总场次</text><text class="stat-value">{{detail.stats.totalGames}}</text></view>
     <view class="stat-item"><text class="stat-label">总买入</text><text class="stat-value">{{detail.stats.totalBuyInDisplay}}</text></view>
@@ -40,18 +42,18 @@
   <view wx:if="{{showPlayerManager}}" class="manager-panel">
     <view wx:if="{{detail.players.length}}" class="player-list">
       <view wx:for="{{detail.players}}" wx:key="id" class="player-chip">
-        <view class="player-avatar">{{item.initial}}</view>
+        <view class="player-avatar" style="background-color: {{item.avatarColor}};">{{item.initial}}</view>
         <text>{{item.name}}</text>
       </view>
     </view>
     <view wx:else class="empty-line">还没有人员，先添加参与牌局的人。</view>
     <view class="manager-add">
       <input value="{{playerName}}" bindinput="onPlayerNameInput" placeholder="人员姓名" class="input" maxlength="100" />
-      <button class="add-button" loading="{{addingPlayer}}" bindtap="addPlayer">添加</button>
+      <button class="add-button" loading="{{addingPlayer}}" disabled="{{addingPlayer}}" bindtap="addPlayer">添加</button>
     </view>
     <view wx:for="{{detail.players}}" wx:key="id" class="manager-row">
       <text>{{item.name}}</text>
-      <button class="danger-button" size="mini" loading="{{deletingPlayerId === item.id}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="deletePlayer">删除</button>
+      <button class="danger-button" size="mini" loading="{{deletingPlayerId === item.id}}" disabled="{{deletingPlayerId}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="deletePlayer">删除</button>
     </view>
   </view>
 
@@ -90,6 +92,7 @@
         </view>
       </view>
     </view>
+    <button wx:if="{{gamesHasMore}}" class="load-more-games" loading="{{loadingMoreGames}}" disabled="{{loadingMoreGames}}" bindtap="loadMoreGames">查看更多牌局</button>
   </view>
   <view wx:else class="empty-state">还没有牌局记录</view>
 </view>
@@ -104,7 +107,7 @@
     </picker>
     <view class="sheet-actions">
       <button class="sheet-cancel" bindtap="closeRoomSettings">取消</button>
-      <button class="sheet-confirm" loading="{{savingRoom}}" bindtap="saveRoomName">保存</button>
+      <button class="sheet-confirm" loading="{{savingRoom}}" disabled="{{savingRoom}}" bindtap="saveRoomName">保存</button>
     </view>
   </view>
 </view>
@@ -117,20 +120,20 @@
       <text>+ 添加本局人员</text>
       <text class="picker-caret">{{playerPickerOpen ? '收起' : '选择'}}</text>
     </view>
-    <view wx:if="{{playerPickerOpen}}" class="player-picker-menu">
+    <scroll-view wx:if="{{playerPickerOpen}}" scroll-y class="player-picker-menu">
       <view wx:for="{{availableGamePlayers}}" wx:key="id" class="player-picker-option" data-index="{{index}}" catchtap="onAddGamePlayer">
-        <view class="player-picker-avatar">{{item.initial}}</view>
+        <view class="player-picker-avatar" style="background-color: {{item.avatarColor}};">{{item.initial}}</view>
         <text>{{item.name}}</text>
       </view>
-    </view>
+    </scroll-view>
     <view wx:if="{{!gameRows.length}}" class="no-game-players">请从名单添加本局参与人员</view>
     <scroll-view scroll-y class="player-editor-list">
       <view wx:for="{{gameRows}}" wx:key="playerId" class="editor-row">
         <view class="editor-fields">
           <text class="editor-name">{{item.playerName}}</text>
           <view class="amount-inputs">
-            <input type="digit" value="{{item.buyIn}}" data-index="{{index}}" bindinput="onGameBuyInInput" placeholder="买入" class="small-input" />
-            <input type="digit" value="{{item.balance}}" data-index="{{index}}" bindinput="onGameBalanceInput" placeholder="结余" class="small-input" />
+            <input type="digit" value="{{item.buyIn}}" data-index="{{index}}" bindinput="onGameBuyInInput" placeholder="0" placeholder-class="input-placeholder" class="small-input" />
+            <input type="digit" value="{{item.balance}}" data-index="{{index}}" bindinput="onGameBalanceInput" placeholder="0" placeholder-class="input-placeholder" class="small-input" />
           </view>
         </view>
         <button class="remove-game-player" data-index="{{index}}" bindtap="removeGamePlayer">移除</button>
@@ -138,7 +141,7 @@
     </scroll-view>
     <view class="sheet-actions">
       <button class="sheet-cancel" bindtap="closeGameEditor">取消</button>
-      <button class="sheet-confirm" loading="{{savingGame}}" bindtap="saveGame">保存牌局</button>
+      <button class="sheet-confirm" loading="{{savingGame}}" disabled="{{savingGame}}" bindtap="saveGame">保存牌局</button>
     </view>
   </view>
 </view>

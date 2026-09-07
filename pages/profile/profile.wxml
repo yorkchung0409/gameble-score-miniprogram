@@ -6,6 +6,7 @@
 </view>
 
 <view wx:elif="{{summary}}" class="page">
+  <view wx:if="{{syncWarning}}" class="sync-warning">{{syncWarning}}</view>
   <view class="profile-header">
     <view>
       <text class="profile-name">{{needsNickname ? '设置昵称' : user.name}}</text>
@@ -14,7 +15,7 @@
   </view>
   <view wx:if="{{needsNickname}}" class="profile-editor">
     <input type="nickname" value="{{nickname}}" bindinput="onNicknameInput" placeholder="输入昵称" class="input" maxlength="30" />
-    <button class="save-button" loading="{{savingProfile}}" bindtap="saveProfile">保存昵称</button>
+    <button class="save-button" loading="{{savingProfile}}" disabled="{{savingProfile}}" bindtap="saveProfile">保存昵称</button>
   </view>
 
   <view class="summary-band">
@@ -23,7 +24,7 @@
   </view>
   <view class="stat-grid">
     <view class="stat-cell">
-      <text class="stat-label">德州输赢</text>
+      <text class="stat-label">扑克输赢</text>
       <text class="stat-value {{summary.pokerNetClass}}">{{summary.pokerNetDisplay}}</text>
       <text class="stat-note">{{summary.poker.gameCount}} 局 · {{summary.poker.trackedLedgerCount}} 本</text>
     </view>
@@ -35,17 +36,7 @@
   </view>
   <view class="tea-row"><text>茶费支出</text><text>{{summary.teaFeeDisplay}}</text></view>
 
-  <view class="section-title"><text>麻将对手战绩</text><text class="section-count">{{summary.mahjong.opponentCount}} 人</text></view>
-  <view wx:if="{{opponents.length}}" class="history-list">
-    <view wx:for="{{opponents}}" wx:key="userId" class="history-row" data-id="{{item.userId}}" bindtap="openOpponent">
-      <view class="history-main">
-        <text class="history-name">{{item.userName}}</text>
-        <text class="history-note">赢 {{item.winTotal}} / 输 {{item.lossTotal}} · {{item.roomCount}} 房</text>
-      </view>
-      <view class="history-side"><text class="{{item.netClass}}">{{item.netDisplay}}</text><text class="history-date">{{item.lastPlayedDisplay}}</text></view>
-    </view>
-  </view>
-  <view wx:else class="empty-state">还没有对手战绩</view>
+  <view class="section-title"><text>麻将对手战绩</text><view class="section-tools"><text class="section-count">{{summary.mahjong.opponentCount}} 人</text><text wx:if="{{summary.mahjong.opponentCount}}" class="section-action" bindtap="openOpponents">查看</text></view></view>
 
   <view class="section-title"><text>历史扑克账本</text><view class="section-tools"><text class="section-count">{{summary.poker.ledgerCount}} 本</text><text wx:if="{{pokerLedgers.length}}" class="section-action" data-type="poker" bindtap="openHistory">查看全部</text></view></view>
   <view wx:if="{{pokerLedgers.length}}" class="history-list">
@@ -58,31 +49,17 @@
       <view class="history-side"><text class="{{item.netClass}}">{{item.netDisplay}}</text><text class="history-date">{{item.updatedDisplay}}</text></view>
     </view>
   </view>
-  <view wx:else class="empty-state">还没有德州账本</view>
+  <view wx:else class="empty-state">还没有扑克账本</view>
 
   <view class="section-title"><text>历史麻将房</text><view class="section-tools"><text class="section-count">{{summary.mahjong.roomCount}} 房</text><text wx:if="{{mahjongRooms.length}}" class="section-action" data-type="mahjong" bindtap="openHistory">查看全部</text></view></view>
   <view wx:if="{{mahjongRooms.length}}" class="history-list">
     <view wx:for="{{mahjongRooms}}" wx:key="roomCode" class="history-row" data-code="{{item.roomCode}}" bindtap="openMahjongRoom">
       <view class="history-main">
-        <text class="history-name">{{item.roomName}}</text>
+        <text class="history-name">房间 {{item.roomCode}}</text>
         <text class="history-note"><text class="room-state {{item.roomStateClass}}">{{item.roomState}}</text> · {{item.lastActivityDisplay}}</text>
       </view>
       <text class="{{item.netClass}}">{{item.netDisplay}}</text>
     </view>
   </view>
   <view wx:else class="empty-state">还没有麻将房记录</view>
-</view>
-
-<view wx:if="{{opponentDetail}}" class="overlay" bindtap="closeOpponent">
-  <view class="sheet" catchtap="preventClose">
-    <view class="sheet-header">
-      <text class="sheet-title">与 {{opponentDetail.opponentName}} 的对战</text>
-      <button class="close-button" bindtap="closeOpponent" aria-label="关闭">×</button>
-    </view>
-    <view class="opponent-summary">
-      <view class="opponent-net"><text class="opponent-label">净输赢</text><text class="opponent-net-value {{opponentDetail.netClass}}">{{opponentDetail.netDisplay}}</text></view>
-      <view class="opponent-split"><view><text class="opponent-label">赢得 {{opponentDetail.opponentName}}</text><text class="opponent-number positive">{{opponentDetail.winDisplay}}</text></view><view><text class="opponent-label">输给 {{opponentDetail.opponentName}}</text><text class="opponent-number negative">{{opponentDetail.lossDisplay}}</text></view></view>
-      <text class="opponent-footnote">涉及 {{opponentDetail.roomCount}} 个麻将房</text>
-    </view>
-  </view>
 </view>

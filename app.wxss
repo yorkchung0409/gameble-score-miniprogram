@@ -1,6 +1,6 @@
 page {
-  background: #F4F6F1;
-  color: #222B26;
+  background: #FAF9F6;
+  color: #2F2925;
   font-size: 28rpx;
 }
 

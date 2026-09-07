@@ -2,20 +2,22 @@
   "pages": [
     "pages/home/home",
     "pages/profile/profile",
+    "pages/opponents/opponents",
     "pages/history/history",
     "pages/poker/poker",
     "pages/room/room"
   ],
   "window": {
     "navigationBarTitleText": "牌局记账",
-    "navigationBarBackgroundColor": "#F4F6F1",
+    "navigationBarBackgroundColor": "#FAF9F6",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#F4F6F1"
+    "backgroundColor": "#FAF9F6"
   },
+  "lazyCodeLoading": "requiredComponents",
   "tabBar": {
     "custom": true,
-    "color": "#6B7A70",
-    "selectedColor": "#1E7A46",
+    "color": "#6D5F56",
+    "selectedColor": "#347258",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
     "list": [
