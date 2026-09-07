@@ -59,6 +59,16 @@ test('concurrent login calls share one cloud request', async () => {
   assert.equal(app.globalData.user.id, 'u1');
 });
 
+test('concurrent identical reads share one cloud request', async () => {
+  const { app, calls } = loadApp();
+  const first = app.request({ path: '/api/mini/me/recent' });
+  const second = app.request({ path: '/api/mini/me/recent' });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls.length, 1);
+  calls[0].success({ statusCode: 200, data: { poker: { ledgers: [] }, mahjong: { rooms: [] } } });
+  assert.deepEqual(await first, await second);
+});
+
 test('profile dashboard uses one aggregated cloud request', async () => {
   const { app, calls } = loadApp();
   const pending = app.getPersonalDashboard({ historyLimit: 1 });
@@ -95,6 +105,48 @@ test('home recent activity uses one aggregated cloud request', async () => {
   const result = await pending;
   assert.equal(result.pokerLedgers[0].room.roomCode, 'P1');
   assert.equal(result.mahjongRooms[0].roomCode, 'M1');
+});
+
+test('shell reads use a brief cache and completed writes invalidate it', async () => {
+  const { app, calls } = loadApp();
+  const first = app.getRecentActivity();
+  await new Promise((resolve) => setImmediate(resolve));
+  calls[0].success({ statusCode: 200, data: { poker: { ledgers: [] }, mahjong: { rooms: [] } } });
+  await first;
+
+  await app.getRecentActivity();
+  assert.equal(calls.length, 1);
+
+  const write = app.request({ path: '/api/mahjong/rooms', method: 'POST', data: { name: '测试房间' } });
+  await new Promise((resolve) => setImmediate(resolve));
+  calls[1].success({ statusCode: 200, data: { room: { roomCode: 'NEW123' } } });
+  await write;
+
+  const afterWrite = app.getRecentActivity();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls.length, 3);
+  calls[2].success({ statusCode: 200, data: { poker: { ledgers: [] }, mahjong: { rooms: [] } } });
+  await afterWrite;
+});
+
+test('forced shell refresh bypasses and clears its brief cache', async () => {
+  const { app, calls } = loadApp();
+  const initial = app.getRecentActivity();
+  await new Promise((resolve) => setImmediate(resolve));
+  calls[0].success({ statusCode: 200, data: { poker: { ledgers: [] }, mahjong: { rooms: [] } } });
+  await initial;
+
+  const forced = app.getRecentActivity({ force: true });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls.length, 2);
+  calls[1].success({ statusCode: 200, data: { poker: { ledgers: [] }, mahjong: { rooms: [] } } });
+  await forced;
+
+  const next = app.getRecentActivity();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls.length, 3);
+  calls[2].success({ statusCode: 200, data: { poker: { ledgers: [] }, mahjong: { rooms: [] } } });
+  await next;
 });
 
 test('home recent poker ledger uses an explicit enter action instead of exposing the room code', () => {

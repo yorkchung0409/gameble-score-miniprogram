@@ -63,7 +63,7 @@ Page({
 
   async onPullDownRefresh() {
     await this.loadMahjongUser();
-    await this.loadRecentActivity();
+    await this.loadRecentActivity({ force: true });
     wx.stopPullDownRefresh();
   },
 
@@ -77,11 +77,11 @@ Page({
     }
   },
 
-  async loadRecentActivity() {
+  async loadRecentActivity(options = {}) {
     if (this.recentLoading || !app.globalData.user) return;
     this.recentLoading = true;
     try {
-      const result = await app.getRecentActivity();
+      const result = await app.getRecentActivity(options);
       this.setData({
         recentLoaded: true,
         recentPokerLedger: result.pokerLedgers?.[0] || null,

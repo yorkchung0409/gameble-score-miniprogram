@@ -7,10 +7,14 @@ const DEFAULT_READ_RETRIES = 3;
 const WARMUP_RETRIES = 5;
 const RETRY_DELAYS_MS = [800, 1200, 1800, 2600, 3600];
 const CONTAINER_SOCKET_TIMEOUT_MS = 8000;
+const SHELL_READ_CACHE_TTL_MS = 1000;
 
 let warmupPromise = null;
 let lastWarmupAt = 0;
 let loginPromise = null;
+const inFlightReadRequests = new Map();
+const recentReadResponses = new Map();
+let readCacheGeneration = 0;
 
 function getErrorMessage(error) {
   return String(error?.errMsg || error?.message || '');
@@ -86,7 +90,7 @@ function friendlyRequestError(error) {
   return new Error(message || responseMessage(error?.responseData));
 }
 
-function request({ path, method = 'GET', data, retry, timeout }) {
+function request({ path, method = 'GET', data, retry, timeout, cacheTtl = 0 }) {
   const normalizedMethod = String(method).toUpperCase();
   const isRead = normalizedMethod === 'GET' || normalizedMethod === 'HEAD';
   const maxRetries = Number.isInteger(retry) ? Math.max(0, retry) : (isRead ? DEFAULT_READ_RETRIES : 0);
@@ -102,7 +106,42 @@ function request({ path, method = 'GET', data, retry, timeout }) {
 
   // A page opened during the app warmup shares that request instead of
   // creating a second cold-start request at the same time.
-  return (waitForWarmup ? warmupPromise.catch(() => null) : Promise.resolve()).then(() => run(0));
+  const execute = () => (waitForWarmup ? warmupPromise.catch(() => null) : Promise.resolve()).then(() => run(0));
+  if (!isRead) {
+    return execute().then((result) => {
+      // Any completed write can change the small shell payloads shown on home
+      // and profile, so stale responses must not survive it.
+      readCacheGeneration += 1;
+      recentReadResponses.clear();
+      return result;
+    });
+  }
+
+  const cacheKey = `${normalizedMethod}:${path}`;
+  const now = Date.now();
+  const ttl = Number.isInteger(cacheTtl) ? Math.max(0, cacheTtl) : 0;
+  if (ttl === 0) recentReadResponses.delete(cacheKey);
+  const cached = recentReadResponses.get(cacheKey);
+  if (ttl > 0 && cached && now - cached.savedAt < ttl) {
+    return Promise.resolve(cached.data);
+  }
+
+  const inFlight = inFlightReadRequests.get(cacheKey);
+  if (inFlight) return inFlight;
+
+  const requestGeneration = readCacheGeneration;
+  const pending = execute()
+    .then((result) => {
+      if (ttl > 0 && requestGeneration === readCacheGeneration) {
+        recentReadResponses.set(cacheKey, { data: result, savedAt: Date.now() });
+      }
+      return result;
+    })
+    .finally(() => {
+      inFlightReadRequests.delete(cacheKey);
+    });
+  inFlightReadRequests.set(cacheKey, pending);
+  return pending;
 }
 
 App({
@@ -190,7 +229,10 @@ App({
 
   async getPersonalDashboard(options = {}) {
     const historyLimit = Number.isInteger(options.historyLimit) ? options.historyLimit : 1;
-    const result = await request({ path: `/api/mini/me/dashboard?historyLimit=${historyLimit}` });
+    const result = await request({
+      path: `/api/mini/me/dashboard?historyLimit=${historyLimit}`,
+      cacheTtl: options.force ? 0 : SHELL_READ_CACHE_TTL_MS,
+    });
     const { summary, poker, mahjong } = result;
     return {
       summary,
@@ -201,8 +243,11 @@ App({
     };
   },
 
-  async getRecentActivity() {
-    const result = await request({ path: '/api/mini/me/recent' });
+  async getRecentActivity(options = {}) {
+    const result = await request({
+      path: '/api/mini/me/recent',
+      cacheTtl: options.force ? 0 : SHELL_READ_CACHE_TTL_MS,
+    });
     return {
       pokerLedgers: result.poker?.ledgers || [],
       mahjongRooms: result.mahjong?.rooms || [],

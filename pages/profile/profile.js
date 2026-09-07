@@ -30,22 +30,22 @@ Page({
   },
 
   async onPullDownRefresh() {
-    await this.loadProfile();
+    await this.loadProfile({ force: true });
     wx.stopPullDownRefresh();
   },
 
-  async loadProfile() {
+  async loadProfile(options = {}) {
     if (this.profileLoadPromise) return this.profileLoadPromise;
-    this.profileLoadPromise = this.performLoadProfile().finally(() => {
+    this.profileLoadPromise = this.performLoadProfile(options).finally(() => {
       this.profileLoadPromise = null;
     });
     return this.profileLoadPromise;
   },
 
-  async performLoadProfile() {
+  async performLoadProfile(options = {}) {
     try {
       const login = await app.login();
-      const dashboard = await app.getPersonalDashboard({ historyLimit: 1 });
+      const dashboard = await app.getPersonalDashboard({ historyLimit: 1, force: options.force });
       const user = dashboard.summary.user || login.user;
       this.setData({
         loading: false,
