@@ -36,6 +36,11 @@
   </view>
   <view class="tea-row"><text>茶费支出</text><text>{{summary.teaFeeDisplay}}</text></view>
 
+  <view wx:if="{{canAccessOperations}}" class="operations-entry" bindtap="openOperations">
+    <view><text class="operations-title">运营监控</text><text class="operations-note">用户、房间与实时连接</text></view>
+    <text class="operations-arrow">›</text>
+  </view>
+
   <view class="section-title"><text>麻将对手战绩</text><view class="section-tools"><text class="section-count">{{summary.mahjong.opponentCount}} 人</text><text wx:if="{{summary.mahjong.opponentCount}}" class="section-action" bindtap="openOpponents">查看</text></view></view>
 
   <view class="section-title"><text>历史扑克账本</text><view class="section-tools"><text class="section-count">{{summary.poker.ledgerCount}} 本</text><text wx:if="{{pokerLedgers.length}}" class="section-action" data-type="poker" bindtap="openHistory">查看全部</text></view></view>

@@ -79,14 +79,26 @@ test('profile dashboard uses one aggregated cloud request', async () => {
     statusCode: 200,
     data: {
       summary: { user: { id: 'u1' } },
+      canAccessOperations: true,
       poker: { ledgers: [], total: 0, hasMore: false, nextOffset: 0 },
       mahjong: { rooms: [], total: 0, hasMore: false, nextOffset: 0 },
     },
   });
   const result = await pending;
   assert.equal(result.summary.user.id, 'u1');
+  assert.equal(result.canAccessOperations, true);
   assert.equal(result.pokerLedgers.length, 0);
   assert.equal(result.mahjongRooms.length, 0);
+});
+
+test('operations entry is conditional on server-authorized dashboard access', () => {
+  const profileWxml = fs.readFileSync(path.resolve(__dirname, '..', 'pages/profile/profile.wxml'), 'utf8');
+  const profileJs = fs.readFileSync(path.resolve(__dirname, '..', 'pages/profile/profile.js'), 'utf8');
+  const operationsWxml = fs.readFileSync(path.resolve(__dirname, '..', 'pages/operations/operations.wxml'), 'utf8');
+  assert.match(profileWxml, /wx:if="\{\{canAccessOperations\}\}"[\s\S]*?bindtap="openOperations"/);
+  assert.match(profileJs, /openOperations\(\)[\s\S]*?pages\/operations\/operations/);
+  assert.match(operationsWxml, /5 分钟操作/);
+  assert.match(operationsWxml, /本实例连接/);
 });
 
 test('home recent activity uses one aggregated cloud request', async () => {

@@ -236,6 +236,7 @@ App({
     const { summary, poker, mahjong } = result;
     return {
       summary,
+      canAccessOperations: Boolean(result.canAccessOperations),
       pokerLedgers: poker.ledgers || [],
       pokerPage: { total: poker.total || 0, hasMore: Boolean(poker.hasMore), nextOffset: poker.nextOffset || 0 },
       mahjongRooms: mahjong.rooms || [],

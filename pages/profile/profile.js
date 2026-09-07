@@ -20,6 +20,7 @@ Page({
     summary: null,
     pokerLedgers: [],
     mahjongRooms: [],
+    canAccessOperations: false,
     syncWarning: '',
   },
 
@@ -55,6 +56,7 @@ Page({
         nickname: user.name === '微信用户' ? '' : user.name,
         needsNickname: user.name === '微信用户',
         summary: this.decorateSummary(dashboard.summary),
+        canAccessOperations: Boolean(dashboard.canAccessOperations),
         pokerLedgers: dashboard.pokerLedgers
           .map((ledger) => this.decoratePokerLedger(ledger))
           .slice(0, 1),
@@ -146,5 +148,9 @@ Page({
 
   openOpponents() {
     wx.navigateTo({ url: '/pages/opponents/opponents' });
+  },
+
+  openOperations() {
+    wx.navigateTo({ url: '/pages/operations/operations' });
   },
 });

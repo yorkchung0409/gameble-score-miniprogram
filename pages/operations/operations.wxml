@@ -1,0 +1,50 @@
+<view wx:if="{{loading}}" class="loading">加载运营数据...</view>
+
+<view wx:elif="{{loadError}}" class="load-failure">
+  <text>{{loadError}}</text>
+  <button class="retry-button" bindtap="loadOverview">重新加载</button>
+</view>
+
+<view wx:elif="{{overview}}" class="page">
+  <view wx:if="{{syncWarning}}" class="sync-warning">{{syncWarning}}</view>
+  <view class="page-header">
+    <text class="page-title">运营监控</text>
+    <text class="updated-at">更新于 {{overview.generatedDisplay}}</text>
+  </view>
+
+  <view class="section">
+    <text class="section-title">用户</text>
+    <view class="metric-grid three-columns">
+      <view class="metric"><text class="metric-value">{{overview.users.total}}</text><text class="metric-label">累计用户</text></view>
+      <view class="metric"><text class="metric-value">{{overview.users.newIn24Hours}}</text><text class="metric-label">24 小时新增</text></view>
+      <view class="metric"><text class="metric-value">{{overview.users.activeIn5Minutes}}</text><text class="metric-label">5 分钟操作</text></view>
+    </view>
+  </view>
+
+  <view class="section">
+    <text class="section-title">房间活跃度</text>
+    <view class="metric-grid">
+      <view class="metric mahjong"><text class="metric-value">{{overview.rooms.activeMahjongIn30Minutes}}</text><text class="metric-label">30 分钟活跃麻将房</text></view>
+      <view class="metric poker"><text class="metric-value">{{overview.rooms.activePokerIn30Minutes}}</text><text class="metric-label">30 分钟活跃扑克账本</text></view>
+    </view>
+  </view>
+
+  <view class="section">
+    <text class="section-title">转账</text>
+    <view class="metric-grid three-columns">
+      <view class="metric"><text class="metric-value">{{overview.transactions.inLastHour}}</text><text class="metric-label">近 1 小时</text></view>
+      <view class="metric"><text class="metric-value">{{overview.transactions.inLast24Hours}}</text><text class="metric-label">近 24 小时</text></view>
+      <view class="metric"><text class="metric-value">{{overview.transactions.reversalsInLast24Hours}}</text><text class="metric-label">24 小时冲正</text></view>
+    </view>
+  </view>
+
+  <view class="section">
+    <text class="section-title">实时同步</text>
+    <view class="metric-grid three-columns">
+      <view class="metric"><text class="metric-value">{{overview.realtime.localConnections}}</text><text class="metric-label">本实例连接</text></view>
+      <view class="metric"><text class="metric-value">{{overview.realtime.localRooms}}</text><text class="metric-label">同步中的房间</text></view>
+      <view class="metric"><text class="metric-value">{{overview.realtime.localLongPollWaiters}}</text><text class="metric-label">长轮询等待</text></view>
+    </view>
+    <text class="section-note">实时连接仅统计当前云托管实例；多实例时请以云托管监控为准。</text>
+  </view>
+</view>
