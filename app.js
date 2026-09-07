@@ -4,7 +4,8 @@ const DEVICE_ID_KEY = 'gameble_device_id';
 const WARMUP_PATH = '/health/ready';
 const WARMUP_COOLDOWN_MS = 5 * 60 * 1000;
 const DEFAULT_READ_RETRIES = 3;
-const WARMUP_RETRIES = 5;
+const WARMUP_RETRIES = 2;
+const WARMUP_TIMEOUT_MS = 5000;
 const RETRY_DELAYS_MS = [800, 1200, 1800, 2600, 3600];
 const CONTAINER_SOCKET_TIMEOUT_MS = 8000;
 const SHELL_READ_CACHE_TTL_MS = 1000;
@@ -94,8 +95,6 @@ function request({ path, method = 'GET', data, retry, timeout, cacheTtl = 0 }) {
   const normalizedMethod = String(method).toUpperCase();
   const isRead = normalizedMethod === 'GET' || normalizedMethod === 'HEAD';
   const maxRetries = Number.isInteger(retry) ? Math.max(0, retry) : (isRead ? DEFAULT_READ_RETRIES : 0);
-  const waitForWarmup = path !== WARMUP_PATH && warmupPromise;
-
   const run = (attempt) => callContainerOnce({ path, method: normalizedMethod, data, timeout }).catch((error) => {
     if (attempt < maxRetries && isRetryableError(error)) {
       const delay = RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
@@ -104,9 +103,10 @@ function request({ path, method = 'GET', data, retry, timeout, cacheTtl = 0 }) {
     throw friendlyRequestError(error);
   });
 
-  // A page opened during the app warmup shares that request instead of
-  // creating a second cold-start request at the same time.
-  const execute = () => (waitForWarmup ? warmupPromise.catch(() => null) : Promise.resolve()).then(() => run(0));
+  // Warm-up only wakes Cloud Hosting. Do not serialize real work behind it:
+  // during a cold start, waiting for a retried readiness probe first can add
+  // tens of seconds before the login request is even sent.
+  const execute = () => run(0);
   if (!isRead) {
     return execute().then((result) => {
       // Any completed write can change the small shell payloads shown on home
@@ -171,7 +171,12 @@ App({
     if (warmupPromise || Date.now() - lastWarmupAt < WARMUP_COOLDOWN_MS) return warmupPromise;
 
     lastWarmupAt = Date.now();
-    warmupPromise = request({ path: WARMUP_PATH, method: 'GET', retry: WARMUP_RETRIES })
+    warmupPromise = request({
+      path: WARMUP_PATH,
+      method: 'GET',
+      retry: WARMUP_RETRIES,
+      timeout: WARMUP_TIMEOUT_MS,
+    })
       .then(() => {
         this.globalData.warmed = true;
         return true;

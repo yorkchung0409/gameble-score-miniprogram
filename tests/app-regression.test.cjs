@@ -32,15 +32,33 @@ function loadApp() {
   return { app: definition, calls };
 }
 
-test('cold-start warmup waits for database readiness', async () => {
+test('cold-start warmup checks database readiness in the background', async () => {
   const { app, calls } = loadApp();
   app.onLaunch();
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(calls.length, 1);
   assert.equal(calls[0].path, '/health/ready');
+  assert.equal(calls[0].timeout, 5000);
   calls[0].success({ statusCode: 200, data: { status: 'ready' } });
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(app.globalData.warmed, true);
+});
+
+test('login starts immediately while the background cold-start warmup is pending', async () => {
+  const { app, calls } = loadApp();
+  app.onLaunch();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls[0].path, '/health/ready');
+
+  const pending = app.login();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].path, '/api/mahjong/auth/wechat');
+  calls[1].success({
+    statusCode: 200,
+    data: { user: { id: 'u1', name: '玩家1' }, isNewUser: false },
+  });
+  assert.equal((await pending).user.id, 'u1');
 });
 
 test('concurrent login calls share one cloud request', async () => {
