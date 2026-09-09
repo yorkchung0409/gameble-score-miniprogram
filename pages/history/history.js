@@ -27,6 +27,14 @@ Page({
     loadingMore: false,
   },
 
+  onShareAppMessage() {
+    return app.getDefaultShareMessage();
+  },
+
+  onShareTimeline() {
+    return app.getDefaultTimelineShare();
+  },
+
   onLoad(options) {
     this.historyRequestSeq = 0;
     const type = options.type === 'poker' || options.type === 'mahjong' ? options.type : 'mahjong';

@@ -13,6 +13,14 @@ Page({
     syncWarning: '',
   },
 
+  onShareAppMessage() {
+    return app.getDefaultShareMessage();
+  },
+
+  onShareTimeline() {
+    return app.getDefaultTimelineShare();
+  },
+
   onLoad() {
     this.loadOpponents();
   },

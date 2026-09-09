@@ -15,13 +15,13 @@
   <view wx:if="{{syncWarning}}" class="sync-warning">{{syncWarning}}</view>
 
   <view wx:if="{{isFreeMode}}" class="panel member-panel">
-    <view class="panel-heading"><text>成员</text><button wx:if="{{isOwner && !isArchived}}" class="tea-fee-rule-action" bindtap="openTeaFeeRule">茶费规则</button></view>
+    <view class="panel-heading"><text>成员</text><button wx:if="{{isOwner && !isArchived}}" class="tea-fee-rule-action" bindtap="openTeaFeeRule">茶费规则 ›</button></view>
     <scroll-view class="member-scroll" scroll-x enhanced show-scrollbar="{{false}}">
       <view class="member-list">
         <view wx:for="{{memberRows}}" wx:key="userId" class="member-card" data-id="{{item.userId}}" bindtap="openTransfer">
           <text wx:if="{{item.isOwner}}" class="owner-tag">房主</text>
           <view class="avatar-wrap"><view class="avatar {{item.isMe ? 'my-avatar' : ''}}" style="background-color: {{item.avatarColor}};">{{item.initial}}</view><text wx:if="{{item.isMe}}" class="me-tag">我</text></view>
-          <text class="member-name">{{item.userName}}</text>
+          <text class="member-name">{{item.userName}}</text><text wx:if="{{isArchived && item.leftAt}}" class="member-left">已离开</text>
           <text class="member-balance {{item.balance > 0 ? 'positive' : item.balance < 0 ? 'negative' : ''}}">{{item.balanceDisplay}}</text>
         </view>
         <view class="member-card tea-item {{teaFeeRule.enabled ? 'tea-item-auto' : ''}}" data-id="tea_fee" bindtap="openTeaFeeTransfer">
@@ -38,7 +38,7 @@
   </view>
 
   <view wx:else class="panel seat-panel">
-    <view class="panel-heading"><text>方位座位</text><button wx:if="{{isOwner && !isArchived}}" class="tea-fee-rule-action" bindtap="openTeaFeeRule">茶费规则</button></view>
+    <view class="panel-heading"><text>方位座位</text><button wx:if="{{isOwner && !isArchived}}" class="tea-fee-rule-action" bindtap="openTeaFeeRule">茶费规则 ›</button></view>
     <view class="seat-board">
       <view class="mahjong-table" bindtap="openTeaFeeTransfer" aria-label="支付茶水费"><image class="tea-fee-icon" src="/assets/tea-fee.svg" mode="aspectFit" /><text class="tea-fee-label">茶水费</text></view>
       <view wx:for="{{seatCards}}" wx:key="seatIndex" class="seat-card seat-{{item.position}} {{item.isMe ? 'selected-seat' : ''}} {{!item.occupied && !isArchived && !isFreeMode ? 'available-seat' : ''}}" data-index="{{item.seatIndex}}" bindtap="onSeatTap">
@@ -61,7 +61,7 @@
 
   <view class="panel transaction-panel">
     <view class="panel-heading"><text>转账流水</text><text class="panel-help">{{isFreeMode ? '点击成员头像转账' : '入座后可转账'}}</text></view>
-    <view wx:if="{{teaFeeRule.enabled}}" class="tea-fee-rule-summary"><text>自动抽水：单人 · 起抽 ¥{{teaFeeRule.thresholdAmount}} · 抽水 {{teaFeeRule.ratePercent}}% · 支持手动茶水费</text></view>
+    <view wx:if="{{teaFeeRule.enabled}}" class="tea-fee-rule-summary"><text wx:if="{{teaFeeRule.mode === 'threshold'}}">自动抽水：满 ¥{{teaFeeRule.thresholdAmount}} 抽 ¥{{teaFeeRule.feeAmount}} · 支持手动茶水费</text><text wx:else>自动抽水：{{teaFeeRule.ratePercent}}% · 不向上取整 · 支持手动茶水费</text></view>
     <scroll-view wx:if="{{detail.transactions.length}}" class="transaction-list" scroll-y enhanced show-scrollbar="{{false}}">
       <view wx:for="{{detail.transactions}}" wx:key="id" class="transaction-row {{item.isReversal ? 'reversal-row' : ''}}">
         <view class="transaction-main"><view class="transaction-time">{{item.timeDisplay}}<text wx:if="{{item.isReversal}}" class="reversal-tag">冲正</text></view><view><text class="payer">{{item.payerName}}</text><text class="arrow">→</text><text class="payee">{{item.payeeDisplay}}</text></view><text wx:if="{{item.teaFeeDisplay}}" class="tea-fee-detail">茶水费 ¥{{item.teaFeeDisplay}}</text><text wx:if="{{item.remark}}" class="remark">备注：{{item.remark}}</text></view>
@@ -93,12 +93,17 @@
     <view class="rule-switch-row"><view><text class="rule-label">自动茶水费</text><text class="rule-desc">每笔玩家结算转账独立计算</text></view><switch checked="{{teaFeeRuleDraft.enabled}}" color="#347258" bindchange="onTeaFeeEnabledChange" /></view>
     <view wx:if="{{teaFeeRuleDraft.enabled}}" class="rule-fields">
       <text class="rule-label">抽水模式</text>
-      <view class="rule-mode-list"><button class="rule-mode-option {{teaFeeRuleDraft.mode === 'per_player' ? 'rule-mode-selected' : ''}}" data-mode="per_player" bindtap="selectTeaFeeMode">单人抽水<text>每笔转账单独计算</text></button><button class="rule-mode-option rule-mode-disabled" disabled="true" data-mode="shared_total">累计抽水<text>按一局合计，暂未开放</text></button></view>
-      <text class="rule-label">起抽金额（达到后按整笔金额抽水）</text>
-      <input class="modal-input rule-input" type="digit" value="{{teaFeeRuleDraft.thresholdAmount}}" bindinput="onTeaFeeThresholdInput" placeholder="0 表示不设门槛" />
-      <view class="rule-rate-head"><text class="rule-label">抽成比例</text><view class="rate-input-wrap"><input class="rate-input" type="number" value="{{teaFeeRuleDraft.ratePercent}}" maxlength="3" bindinput="onTeaFeeRateInput" placeholder="0" /><text class="rate-suffix">%</text></view></view>
-      <view class="rate-presets"><button data-rate="5" class="rate-preset {{teaFeeRuleDraft.ratePercent === 5 ? 'rate-preset-selected' : ''}}" bindtap="setTeaFeeRate">5%</button><button data-rate="10" class="rate-preset {{teaFeeRuleDraft.ratePercent === 10 ? 'rate-preset-selected' : ''}}" bindtap="setTeaFeeRate">10%</button><button data-rate="20" class="rate-preset {{teaFeeRuleDraft.ratePercent === 20 ? 'rate-preset-selected' : ''}}" bindtap="setTeaFeeRate">20%</button></view>
-      <text class="rule-summary">例如每笔转账 100 元、抽成 {{teaFeeRuleDraft.ratePercent}}%，收款人实收 {{100 - teaFeeRuleDraft.ratePercent}} 元。</text>
+      <view class="rule-mode-list"><button class="rule-mode-option {{teaFeeRuleDraft.mode === 'percentage' ? 'rule-mode-selected' : ''}}" data-mode="percentage" bindtap="selectTeaFeeMode">百分比抽水<text>按百分比抽水，不取整</text></button><button class="rule-mode-option {{teaFeeRuleDraft.mode === 'threshold' ? 'rule-mode-selected' : ''}}" data-mode="threshold" bindtap="selectTeaFeeMode">满额抽水<text>满X抽Y</text></button></view>
+      <block wx:if="{{teaFeeRuleDraft.mode === 'percentage'}}">
+        <view class="rule-rate-head"><text class="rule-label">抽成比例</text><view class="rate-input-wrap"><input class="rate-input" type="number" value="{{teaFeeRuleDraft.ratePercent}}" maxlength="3" bindinput="onTeaFeeRateInput" placeholder="0" /><text class="rate-suffix">%</text></view></view>
+        <view class="rate-presets"><button data-rate="5" class="rate-preset {{teaFeeRuleDraft.ratePercent === 5 ? 'rate-preset-selected' : ''}}" bindtap="setTeaFeeRate">5%</button><button data-rate="10" class="rate-preset {{teaFeeRuleDraft.ratePercent === 10 ? 'rate-preset-selected' : ''}}" bindtap="setTeaFeeRate">10%</button><button data-rate="20" class="rate-preset {{teaFeeRuleDraft.ratePercent === 20 ? 'rate-preset-selected' : ''}}" bindtap="setTeaFeeRate">20%</button></view>
+        <text class="rule-summary">按转账金额的 {{teaFeeRuleDraft.ratePercent}}% 抽水；不会向上取整。</text>
+      </block>
+      <block wx:else>
+        <text class="rule-label">满额规则</text>
+        <view class="threshold-fee-row"><text class="threshold-word">满</text><input class="threshold-fee-input" type="digit" value="{{teaFeeRuleDraft.thresholdAmount}}" bindinput="onTeaFeeThresholdInput" placeholder="金额" /><text class="threshold-word">抽</text><input class="threshold-fee-input" type="digit" value="{{teaFeeRuleDraft.feeAmount}}" bindinput="onTeaFeeAmountInput" placeholder="金额" /></view>
+        <text class="rule-summary">满 ¥{{teaFeeRuleDraft.thresholdAmount}} 抽 ¥{{teaFeeRuleDraft.feeAmount}}；每达到一次满额，就再抽一次。</text>
+      </block>
     </view>
     <button class="confirm-button rule-save-button" loading="{{savingTeaFeeRule}}" disabled="{{savingTeaFeeRule}}" bindtap="saveTeaFeeRule">保存规则</button>
   </view>

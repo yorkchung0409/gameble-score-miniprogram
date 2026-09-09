@@ -6,15 +6,24 @@
     </button>
   </view>
 
+  <view wx:if="{{serviceStarting}}" class="service-status service-starting">
+    <text class="service-status-title">正在准备牌局服务</text>
+    <text class="service-status-note">{{recentLoaded ? '最近记录已加载，操作功能准备中' : '正在读取最近记录'}}</text>
+  </view>
+  <view wx:elif="{{serviceStartError}}" class="service-status service-error" bindtap="retryService">
+    <text class="service-status-title">服务暂时不可用</text>
+    <text class="service-status-note">点击重新连接</text>
+  </view>
+
   <view class="entry-section">
     <text class="section-heading">麻将记分</text>
-    <button class="action-button mahjong-button" loading="{{creatingMahjong}}" disabled="{{creatingMahjong}}" bindtap="openMahjongCreate">创建房间</button>
-    <button class="action-button secondary-action" bindtap="openMahjongJoin">加入房间</button>
+    <button class="action-button mahjong-button" loading="{{creatingMahjong}}" disabled="{{creatingMahjong || serviceStarting}}" bindtap="openMahjongCreate">创建房间</button>
+    <button class="action-button secondary-action" disabled="{{serviceStarting}}" bindtap="openMahjongJoin">加入房间</button>
   </view>
 
   <view class="entry-section poker-section">
     <text class="section-heading">扑克记账</text>
-    <button class="action-button poker-button" bindtap="openPokerCreate">创建账本</button>
+    <button class="action-button poker-button" disabled="{{serviceStarting}}" bindtap="openPokerCreate">创建账本</button>
   </view>
 
   <view wx:if="{{recentLoaded}}" class="recent-section">

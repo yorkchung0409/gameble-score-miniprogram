@@ -1,5 +1,10 @@
 .page { position: relative; min-height: 100vh; box-sizing: border-box; padding: 36rpx 32rpx 178rpx; color: #2F2925; }
 .page-toolbar { position: absolute; top: 28rpx; right: 32rpx; height: 52rpx; }
+.service-status { display: flex; align-items: baseline; gap: 12rpx; min-height: 44rpx; margin: 0 0 18rpx; padding: 0 14rpx; border-radius: 8rpx; font-size: 23rpx; line-height: 44rpx; }
+.service-starting { background: #EDF4EF; color: #347258; }
+.service-error { background: #FBEEE9; color: #A95045; }
+.service-status-title { flex: 0 0 auto; font-weight: 700; }
+.service-status-note { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .guide-button, .guide-close { display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; }
 .guide-button::after, .guide-close::after { border: 0; }
 .guide-button { width: auto; height: 52rpx; gap: 8rpx; border: 0; border-radius: 0; background: transparent; color: #6E6259; font-size: 26rpx; font-weight: 600; line-height: 52rpx; }

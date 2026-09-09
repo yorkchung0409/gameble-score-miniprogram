@@ -2,6 +2,7 @@
   "appid": "wxda7e802fbdf6bdaa",
   "projectname": "gameble-score",
   "miniprogramRoot": "./",
+  "cloudfunctionRoot": "cloudfunctions/",
   "setting": {
     "urlCheck": true,
     "es6": true,

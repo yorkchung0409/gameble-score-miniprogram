@@ -1,5 +1,10 @@
 const app = getApp();
 
+function createOperationId(prefix) {
+  if (typeof app.createOperationId === 'function') return app.createOperationId(prefix);
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function createMahjongPreviewDetail(room, user) {
   const userName = user.name || '微信用户';
   const roomDetail = Object.assign({}, room, {
@@ -36,14 +41,27 @@ Page({
     joiningMahjong: false,
     pokerLedgerName: '我的账本',
     creatingPoker: false,
+    serviceStarting: true,
+    serviceStartError: '',
     recentLoaded: false,
     recentMahjongRoom: null,
     recentPokerLedger: null,
   },
 
+  onShareAppMessage() {
+    return app.getDefaultShareMessage();
+  },
+
+  onShareTimeline() {
+    return app.getDefaultTimelineShare();
+  },
+
   async onLoad() {
+    this.functionBootstrapLoaded = await this.loadBootstrapActivity();
     const user = await this.loadMahjongUser();
-    if (user) await this.loadRecentActivity();
+    // Do not immediately replace a successful function response with a Cloud
+    // Hosting read. That request would wake a scaled-to-zero container again.
+    if (user && !this.functionBootstrapLoaded) await this.loadRecentActivity();
   },
 
   async onShow() {
@@ -53,12 +71,15 @@ Page({
       !this.data.showMahjongJoin && !this.data.showPokerCreate,
     );
     if (!app.globalData.user) {
+      this.functionBootstrapLoaded = await this.loadBootstrapActivity();
       const user = await this.loadMahjongUser();
-      if (user) await this.loadRecentActivity();
+      if (user && !this.functionBootstrapLoaded) await this.loadRecentActivity();
       return;
     }
     this.setData({ user: app.globalData.user });
-    await this.loadRecentActivity();
+    if (!this.functionBootstrapLoaded && !this.data.recentLoaded) {
+      await this.loadRecentActivity();
+    }
   },
 
   async onPullDownRefresh() {
@@ -68,11 +89,18 @@ Page({
   },
 
   async loadMahjongUser() {
+    if (!app.globalData.user) {
+      this.setData({ serviceStarting: true, serviceStartError: '' });
+    }
     try {
       const result = await app.login();
-      this.setData({ user: result.user });
+      this.setData({ user: result.user, serviceStarting: false, serviceStartError: '' });
       return result.user;
-    } catch {
+    } catch (error) {
+      this.setData({
+        serviceStarting: false,
+        serviceStartError: error.message || '服务暂时无法连接',
+      });
       return null;
     }
   },
@@ -94,13 +122,37 @@ Page({
     }
   },
 
+  async loadBootstrapActivity() {
+    try {
+      const result = await app.getBootstrapRecentActivity();
+      if (!result) return false;
+      this.setData({
+        recentLoaded: true,
+        recentPokerLedger: result.pokerLedgers[0] || null,
+        recentMahjongRoom: result.mahjongRooms[0] || null,
+      });
+      return true;
+    } catch {
+      // The Cloud Hosting refresh remains the authoritative fallback.
+      return false;
+    }
+  },
+
   async ensureMahjongUser() {
     if (app.globalData.user) return app.globalData.user;
     const user = await this.loadMahjongUser();
     if (!user) {
-      wx.showToast({ title: '暂时无法登录，请检查云托管服务', icon: 'none' });
+      wx.showToast({ title: '暂时无法登录，请检查云函数服务或网络', icon: 'none' });
     }
     return user;
+  },
+
+  retryService() {
+    this.loadMahjongUser().then(async (user) => {
+      if (!user) return;
+      this.functionBootstrapLoaded = await this.loadBootstrapActivity();
+      if (!this.functionBootstrapLoaded) this.loadRecentActivity({ force: true });
+    });
   },
 
   openGuide() {
@@ -174,20 +226,26 @@ Page({
   async createMahjongRoom() {
     if (this.data.creatingMahjong) return;
     this.setData({ creatingMahjong: true });
+    const operationId = this.mahjongCreateOperationId || (this.mahjongCreateOperationId = createOperationId('mahjong_room'));
+    let navigationRequested = false;
     try {
       const user = await this.ensureMahjongUser();
       if (!user) return;
-      const result = await app.request({
-        path: '/api/mahjong/rooms',
-        method: 'POST',
-        data: {
-          name: '麻将牌局',
-          creatorUserId: user.id,
-        },
-      });
+      let result;
+      try {
+        result = await app.mahjongCore('createMahjongRoom', { name: '麻将牌局', operationId });
+      } catch (coreError) {
+        if (coreError.coreBusiness) throw coreError;
+        result = await app.request({
+          path: '/api/mahjong/rooms',
+          method: 'POST',
+            data: { name: '麻将牌局', creatorUserId: user.id, operationId },
+        });
+      }
       const roomCode = result.room.roomCode;
       app.globalData.pendingMahjongRooms = app.globalData.pendingMahjongRooms || {};
       app.globalData.pendingMahjongRooms[roomCode] = createMahjongPreviewDetail(result.room, user);
+      navigationRequested = true;
       wx.navigateTo({
         url: `/pages/room/room?roomCode=${roomCode}`,
         fail: () => {
@@ -198,11 +256,16 @@ Page({
           });
           wx.showToast({ title: '暂时无法打开房间', icon: 'none' });
         },
+        success: () => { this.mahjongCreateOperationId = ''; },
+        // Keep the button's loading state through the page transition. The
+        // request is already done here, but the next page has not opened yet.
+        complete: () => this.setData({ creatingMahjong: false }),
       });
     } catch (error) {
+      navigationRequested = false;
       wx.showToast({ title: error.message || '创建房间失败', icon: 'none' });
     } finally {
-      this.setData({ creatingMahjong: false });
+      if (!navigationRequested) this.setData({ creatingMahjong: false });
     }
   },
 
@@ -232,12 +295,13 @@ Page({
     }
 
     this.setData({ creatingPoker: true });
+    const operationId = this.pokerCreateOperationId || (this.pokerCreateOperationId = createOperationId('poker_ledger'));
     try {
       await app.login();
       const result = await app.request({
         path: '/api/mini/poker/ledgers',
         method: 'POST',
-        data: { roomName },
+        data: { roomName, operationId },
       });
       this.closePokerCreate();
       wx.navigateTo({
@@ -249,6 +313,7 @@ Page({
           });
           wx.showToast({ title: '暂时无法打开账本', icon: 'none' });
         },
+        success: () => { this.pokerCreateOperationId = ''; },
       });
     } catch (error) {
       wx.showToast({ title: error.message || '创建账本失败', icon: 'none' });

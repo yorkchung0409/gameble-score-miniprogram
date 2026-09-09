@@ -36,6 +36,14 @@ Page({
     loadingMoreGames: false,
   },
 
+  onShareAppMessage() {
+    return app.getDefaultShareMessage();
+  },
+
+  onShareTimeline() {
+    return app.getDefaultTimelineShare();
+  },
+
   async onLoad(options) {
     this.roomLoadPromise = null;
     this.visibleGameCount = GAME_BATCH_SIZE;

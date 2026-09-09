@@ -1,0 +1,10 @@
+{
+  "name": "gameble-bootstrap-probe",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "mysql2": "^3.24.3",
+    "wx-server-sdk": "^4.0.2"
+  }
+}

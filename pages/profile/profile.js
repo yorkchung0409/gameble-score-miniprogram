@@ -24,6 +24,14 @@ Page({
     syncWarning: '',
   },
 
+  onShareAppMessage() {
+    return app.getDefaultShareMessage();
+  },
+
+  onShareTimeline() {
+    return app.getDefaultTimelineShare();
+  },
+
   async onShow() {
     const tabBar = this.getTabBar?.();
     if (tabBar) tabBar.setData({ selected: 1 });
@@ -53,8 +61,8 @@ Page({
         loadError: '',
         syncWarning: '',
         user,
-        nickname: user.name === '微信用户' ? '' : user.name,
-        needsNickname: user.name === '微信用户',
+        nickname: /^微信用户(?:\d{4})?$/.test(user.name) ? '' : user.name,
+        needsNickname: /^微信用户(?:\d{4})?$/.test(user.name),
         summary: this.decorateSummary(dashboard.summary),
         canAccessOperations: Boolean(dashboard.canAccessOperations),
         pokerLedgers: dashboard.pokerLedgers
@@ -117,11 +125,20 @@ Page({
     }
     this.setData({ savingProfile: true });
     try {
-      const result = await app.request({
-        path: `/api/mahjong/users/${this.data.user.id}/profile`,
-        method: 'PATCH',
-        data: { name },
-      });
+      let result;
+      try {
+        result = await app.mahjongCore('updateMahjongUserProfile', { name });
+      } catch (coreError) {
+        const unsupportedLegacyAction = coreError.coreBusiness
+          && coreError.code === 'BAD_REQUEST'
+          && /不支持的云函数操作/.test(coreError.message || '');
+        if (coreError.coreBusiness && !unsupportedLegacyAction) throw coreError;
+        result = await app.request({
+          path: `/api/mahjong/users/${this.data.user.id}/profile`,
+          method: 'PATCH',
+          data: { name },
+        });
+      }
       app.globalData.user = result.user;
       this.setData({ user: result.user, nickname: result.user.name, needsNickname: false });
     } catch (error) {

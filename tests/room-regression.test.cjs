@@ -35,6 +35,8 @@ function loadPage(relativePath, app, wxOverrides = {}) {
     encodeURIComponent,
     setTimeout,
     clearTimeout,
+    setInterval,
+    clearInterval,
   }, { filename });
   return { definition, wx };
 }
@@ -150,9 +152,39 @@ test('automatic tea-fee rule summary sits above the transaction list', () => {
     /wx:if="\{\{teaFeeRule\.enabled\}\}"/,
   );
   assert.ok(summaryIndex < transactionListIndex);
-  assert.match(wxml.slice(summaryIndex, transactionListIndex), /起抽/);
+  assert.match(wxml.slice(summaryIndex, transactionListIndex), /满 ¥/);
+  assert.match(wxml.slice(summaryIndex, transactionListIndex), /不向上取整/);
   assert.match(wxml.slice(summaryIndex, transactionListIndex), /抽水/);
   assert.match(wxml.slice(summaryIndex, transactionListIndex), /手动茶水费/);
+});
+
+test('tea-fee rule editor offers percentage and threshold modes', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/room/room.wxml'), 'utf8');
+  assert.match(wxml, /百分比抽水<text>按百分比抽水，不取整<\/text>/);
+  assert.match(wxml, /满额抽水<text>满X抽Y<\/text>/);
+  assert.match(wxml, /class="threshold-fee-row"/);
+  assert.match(wxml, /bindinput="onTeaFeeAmountInput"/);
+});
+
+test('a legacy zero-threshold rule does not show 1.00 as the default fee', () => {
+  const app = { globalData: { user: { id: 'u1', name: '玩家1' } } };
+  const { definition } = loadPage('pages/room/room.js', app);
+  const page = createPage(definition, {
+    isOwner: true,
+    isArchived: false,
+    teaFeeRule: {
+      enabled: true,
+      mode: 'threshold',
+      thresholdAmount: '0.00',
+      ratePercent: 0,
+      feeAmount: '1.00',
+    },
+  });
+
+  page.openTeaFeeRule();
+
+  assert.equal(page.data.teaFeeRuleDraft.thresholdAmount, '0.00');
+  assert.equal(page.data.teaFeeRuleDraft.feeAmount, '0.00');
 });
 
 test('tea-fee rate input supports the full 0-100 percent range', () => {
@@ -178,7 +210,7 @@ test('automatic tea-fee amount is shown on each transaction row', () => {
   assert.match(wxml, /茶水费 ¥\{\{item\.teaFeeDisplay\}\}/);
 });
 
-test('creating a Mahjong room navigates before caching the recent room on home', async () => {
+test('creating a Mahjong room keeps its loading state through navigation', async () => {
   let navigation;
   const app = {
     globalData: { user: { id: 'u1', name: '玩家1' } },
@@ -196,6 +228,9 @@ test('creating a Mahjong room navigates before caching the recent room on home',
   assert.equal(page.data.recentMahjongRoom, null);
   assert.equal(app.globalData.pendingMahjongRooms.NEW123.room.roomCode, 'NEW123');
   assert.equal(app.globalData.pendingMahjongRooms.NEW123.members[0].userId, 'u1');
+  assert.equal(page.data.creatingMahjong, true);
+  navigation.complete();
+  assert.equal(page.data.creatingMahjong, false);
 });
 
 test('newly created Mahjong room renders its preview before detail refresh completes', async () => {
@@ -212,7 +247,6 @@ test('newly created Mahjong room renders its preview before detail refresh compl
   };
   const { definition } = loadPage('pages/room/room.js', app);
   const page = createPage(definition);
-  page.startRealtime = () => {};
 
   const loading = page.onLoad({ roomCode: 'NEW123' });
   await new Promise((resolve) => setImmediate(resolve));
@@ -225,105 +259,27 @@ test('newly created Mahjong room renders its preview before detail refresh compl
   await loading;
 });
 
-test('realtime events received during a refresh trigger one follow-up refresh', async () => {
-  const app = { globalData: { user: { id: 'u1', name: '玩家1' } } };
-  const { definition } = loadPage('pages/room/room.js', app);
-  const page = createPage(definition);
-  page.realtimeStarted = true;
-  page.realtimeRefreshPending = false;
-  page.realtimeRefreshPromise = null;
-  let releaseFirst;
-  let calls = 0;
-  page.loadRoom = () => {
-    calls += 1;
-    if (calls === 1) return new Promise((resolve) => { releaseFirst = resolve; });
-    return Promise.resolve();
-  };
-
-  page.refreshRoomFromRealtime();
-  const activeRefresh = page.realtimeRefreshPromise;
-  await Promise.resolve();
-  page.refreshRoomFromRealtime();
-  page.refreshRoomFromRealtime();
-  releaseFirst();
-  await activeRefresh;
-
-  assert.equal(calls, 2);
-  assert.equal(page.realtimeRefreshPending, false);
-});
-
-test('a websocket reconnect refreshes data when the server version advanced', () => {
-  const app = { globalData: { user: { id: 'u1', name: '玩家1' } } };
-  const { definition } = loadPage('pages/room/room.js', app);
-  const page = createPage(definition);
-  page.realtimeStarted = true;
-  page.realtimeVersion = 4;
-  let refreshes = 0;
-  page.refreshRoomFromRealtime = () => { refreshes += 1; };
-
-  page.handleRealtimeMessage({ data: JSON.stringify({ type: 'connected', version: 5 }) });
-  page.handleRealtimeMessage({ data: JSON.stringify({ type: 'connected', version: 5 }) });
-
-  assert.equal(page.realtimeVersion, 5);
-  assert.equal(refreshes, 1);
-});
-
-test('healthy WebSocket connections do not start long polling, while a failed connection does', async () => {
-  let openHandler;
-  const socketTask = {
-    close() {},
-    onOpen(handler) { openHandler = handler; },
-    onMessage() {},
-    onClose() {},
-    onError() {},
-  };
+test('room version polling loads full detail only after another player changes the room', async () => {
+  const actions = [];
   const app = {
     globalData: { user: { id: 'u1', name: '玩家1' } },
-    connectContainer: async () => ({ socketTask }),
-  };
-  const { definition } = loadPage('pages/room/room.js', app);
-  const page = createPage(definition, { roomCode: 'ABC123' });
-  page.realtimeStarted = true;
-  page.realtimeGeneration = 1;
-  let pollingStarts = 0;
-  page.startLongPolling = () => { pollingStarts += 1; };
-
-  await page.connectRealtime(1);
-  openHandler();
-  assert.equal(pollingStarts, 0);
-  assert.equal(page.data.realtimeConnected, true);
-
-  app.connectContainer = async () => { throw new Error('socket unavailable'); };
-  page.stopRealtime();
-  page.realtimeStarted = true;
-  page.realtimeGeneration = 3;
-  let reconnects = 0;
-  page.scheduleRealtimeReconnect = () => { reconnects += 1; };
-  await page.connectRealtime(3);
-  assert.equal(pollingStarts, 1);
-  assert.equal(reconnects, 1);
-});
-
-test('long-poll fallback uses one extended request without generic read retries', async () => {
-  let requestOptions;
-  const app = {
-    globalData: { user: { id: 'u1', name: '玩家1' } },
-    request: async (options) => {
-      requestOptions = options;
-      page.realtimeStarted = false;
-      return { version: 0 };
+    mahjongCore: async (action) => {
+      actions.push(action);
+      return { revision: 8 };
     },
   };
   const { definition } = loadPage('pages/room/room.js', app);
   const page = createPage(definition, { roomCode: 'ABC123' });
-  page.realtimeStarted = true;
-  page.realtimeGeneration = 1;
-  page.realtimePollActive = true;
+  page.roomRevision = 7;
+  let fullLoads = 0;
+  page.loadRoom = async () => { fullLoads += 1; page.roomRevision = 8; };
 
-  await page.runLongPolling(1);
+  await page.syncRoomRevision();
+  assert.deepEqual(actions, ['getMahjongRoomRevision']);
+  assert.equal(fullLoads, 1);
 
-  assert.equal(requestOptions.retry, 0);
-  assert.equal(requestOptions.timeout, 53000);
+  await page.syncRoomRevision();
+  assert.equal(fullLoads, 1);
 });
 
 test('a transient background refresh keeps the last successful room visible', async () => {
@@ -641,6 +597,60 @@ test('a transient profile refresh keeps the last successful dashboard visible', 
   assert.equal(page.data.summary, summary);
   assert.equal(page.data.loadError, '');
   assert.match(page.data.syncWarning, /上次成功加载/);
+});
+
+test('saving a nickname uses the Cloud Function before Cloud Hosting', async () => {
+  const calls = [];
+  const app = {
+    globalData: { user: { id: 'u1', name: '微信用户' } },
+    mahjongCore: async (action, data) => {
+      calls.push({ action, data });
+      return { user: { id: 'u1', name: data.name } };
+    },
+    request: async () => { throw new Error('Cloud Hosting fallback should not run'); },
+  };
+  const { definition } = loadPage('pages/profile/profile.js', app);
+  const page = createPage(definition, {
+    user: app.globalData.user,
+    nickname: '新昵称',
+    needsNickname: true,
+  });
+
+  await page.saveProfile();
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].action, 'updateMahjongUserProfile');
+  assert.equal(calls[0].data.name, '新昵称');
+  assert.equal(page.data.user.name, '新昵称');
+  assert.equal(page.data.needsNickname, false);
+});
+
+test('saving a nickname falls back when an older Cloud Function lacks the action', async () => {
+  let fallbackCalls = 0;
+  const app = {
+    globalData: { user: { id: 'u1', name: '微信用户' } },
+    mahjongCore: async () => {
+      const error = new Error('不支持的云函数操作');
+      error.coreBusiness = true;
+      error.code = 'BAD_REQUEST';
+      throw error;
+    },
+    request: async () => {
+      fallbackCalls += 1;
+      return { user: { id: 'u1', name: '新昵称' } };
+    },
+  };
+  const { definition } = loadPage('pages/profile/profile.js', app);
+  const page = createPage(definition, {
+    user: app.globalData.user,
+    nickname: '新昵称',
+    needsNickname: true,
+  });
+
+  await page.saveProfile();
+
+  assert.equal(fallbackCalls, 1);
+  assert.equal(page.data.user.name, '新昵称');
 });
 
 test('poker settings are saved with one atomic request', async () => {

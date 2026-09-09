@@ -8,14 +8,17 @@ const SEAT_LAYOUT = [
   { seatIndex: 2, seatName: '西', position: 'west' },
 ];
 const TRANSACTION_BATCH_SIZE = 30;
-const REALTIME_CONNECT_TIMEOUT_MS = 5000;
-const REALTIME_RECONNECT_BASE_MS = 5000;
-const REALTIME_RECONNECT_MAX_MS = 60000;
-const LONG_POLL_TIMEOUT_MS = 45 * 1000;
-const LONG_POLL_REQUEST_TIMEOUT_MS = LONG_POLL_TIMEOUT_MS + 8000;
+const FUNCTION_SYNC_INTERVAL_MS = 15 * 1000;
 
 function roomDetailPath(roomCode, suffix = '', offset = 0) {
   return `/api/mahjong/rooms/${encodeURIComponent(roomCode)}${suffix}?transactionLimit=${TRANSACTION_BATCH_SIZE}&transactionOffset=${offset}`;
+}
+
+async function requestMahjongCore(action, data) {
+  if (typeof app.mahjongCore === 'function') return app.mahjongCore(action, data);
+  // This branch only supports older embedded shells during development. The
+  // production App adapter routes requests back to the same Cloud Function.
+  return app.request({ action, data });
 }
 
 Page({
@@ -54,36 +57,31 @@ Page({
     switchingMode: false,
     teaFeeRule: {
       enabled: false,
-      mode: 'per_player',
+      mode: 'percentage',
       thresholdAmount: '0.00',
       ratePercent: 10,
+      feeAmount: '0.00',
       version: 0,
       updatedAt: null,
     },
     teaFeeRuleOpen: false,
     teaFeeRuleDraft: {
       enabled: false,
-      mode: 'per_player',
+      mode: 'percentage',
       thresholdAmount: '0.00',
       ratePercent: 10,
+      feeAmount: '0.00',
     },
     savingTeaFeeRule: false,
-    realtimeConnected: false,
     transactionsHasMore: false,
     loadingMoreTransactions: false,
   },
 
   async onLoad(options) {
     this.hasJoinedRoom = false;
-    this.realtimeStarted = false;
-    this.realtimeGeneration = 0;
-    this.realtimeVersion = 0;
-    this.roomSocketTask = null;
-    this.realtimeReconnectTimer = null;
-    this.realtimeReconnectAttempt = 0;
-    this.realtimePollActive = false;
-    this.realtimeRefreshPromise = null;
-    this.realtimeRefreshPending = false;
+    this.functionSyncTimer = null;
+    this.functionSyncPromise = null;
+    this.roomRevision = undefined;
     this.roomLoadPromise = null;
     this.transferOperationId = '';
     this.visibleTransactionCount = TRANSACTION_BATCH_SIZE;
@@ -120,22 +118,26 @@ Page({
       return;
     }
     await this.loadRoom();
-    if (this.data.detail) this.startRealtime();
+    if (this.data.detail) {
+      this.startFunctionSync();
+    }
   },
 
   async onShow() {
     if (this.data.roomCode && !this.data.loading && !this.data.transferOpen && !this.data.modeDialogOpen) {
       await this.loadRoom(false);
     }
-    if (this.data.roomCode && this.data.detail && !this.realtimeStarted) this.startRealtime();
+    if (this.data.roomCode && this.data.detail) {
+      this.startFunctionSync();
+    }
   },
 
   onHide() {
-    this.stopRealtime();
+    this.stopFunctionSync();
   },
 
   onUnload() {
-    this.stopRealtime();
+    this.stopFunctionSync();
     this.roomTransactions = [];
     this.rawRoomTransactions = [];
   },
@@ -152,12 +154,19 @@ Page({
     };
   },
 
+  onShareTimeline() {
+    return {
+      title: `邀请你加入麻将房 ${this.data.roomCode}`,
+      query: `roomCode=${encodeURIComponent(this.data.roomCode)}`,
+    };
+  },
+
   async retryLoadRoom() {
     this.setData({ loading: true, loadError: '', syncWarning: '' });
     try {
       await app.login();
       await this.loadRoom();
-      if (this.data.detail && !this.realtimeStarted) this.startRealtime();
+      if (this.data.detail) this.startFunctionSync();
     } catch (error) {
       this.setData({
         loading: false,
@@ -181,27 +190,35 @@ Page({
       let detail;
       if (!this.hasJoinedRoom) {
         try {
-          detail = await app.request({
-            path: roomDetailPath(this.data.roomCode, '/join'),
-            method: 'POST',
-            data: { userId: user.id },
-          });
+          detail = await requestMahjongCore(
+            'joinMahjongRoom',
+            { roomCode: this.data.roomCode },
+            { path: roomDetailPath(this.data.roomCode, '/join'), method: 'POST', data: { userId: user.id } },
+          );
           this.hasJoinedRoom = true;
         } catch (joinError) {
-          detail = await app.request({
-            path: roomDetailPath(this.data.roomCode),
-          });
+          detail = await requestMahjongCore(
+            'getMahjongRoom',
+            { roomCode: this.data.roomCode, limit: TRANSACTION_BATCH_SIZE, offset: 0 },
+            { path: roomDetailPath(this.data.roomCode) },
+          );
           const alreadyJoined = (detail.members || []).some((member) => member.userId === user.id);
           if (!detail.room.dissolvedAt && !alreadyJoined) throw joinError;
           if (alreadyJoined) this.hasJoinedRoom = true;
         }
       } else {
-        detail = await app.request({
-          path: roomDetailPath(this.data.roomCode),
-        });
+        detail = await requestMahjongCore(
+          'getMahjongRoom',
+          { roomCode: this.data.roomCode, limit: TRANSACTION_BATCH_SIZE, offset: 0 },
+          { path: roomDetailPath(this.data.roomCode) },
+        );
       }
+      const wasArchived = this.data.isArchived;
       this.applyRoomDetail(detail);
-      if (detail.room.dissolvedAt && this.realtimeStarted) this.stopRealtime();
+      if (detail.room.dissolvedAt) {
+        this.stopFunctionSync();
+        if (!wasArchived) wx.showToast({ title: '房间已归档，仅可查看', icon: 'none' });
+      }
     } catch (error) {
       const message = error.message || '加载房间失败';
       if (this.data.detail) {
@@ -215,228 +232,54 @@ Page({
     }
   },
 
-  startRealtime() {
-    if (!this.data.roomCode || this.realtimeStarted) return;
-    this.realtimeStarted = true;
-    const generation = ++this.realtimeGeneration;
-    this.connectRealtime(generation);
+  // An active room has no permanent push connection. The lightweight revision
+  // check reads one cached row; full room data is requested only after a change.
+  startFunctionSync() {
+    if (!this.data.roomCode || this.data.isArchived || this.functionSyncTimer) return;
+    this.functionSyncFailureCount = 0;
+    this.functionSyncNextAllowedAt = 0;
+    this.functionSyncTimer = setInterval(() => {
+      if (this.data.transferOpen || this.data.modeDialogOpen || this.data.teaFeeRuleOpen) return;
+      if (Date.now() < (this.functionSyncNextAllowedAt || 0)) return;
+      void this.syncRoomRevision();
+    }, FUNCTION_SYNC_INTERVAL_MS);
+    this.functionSyncTimer.unref?.();
   },
 
-  stopRealtime() {
-    this.realtimeStarted = false;
-    this.realtimeGeneration += 1;
-    if (this.realtimeReconnectTimer) {
-      clearTimeout(this.realtimeReconnectTimer);
-      this.realtimeReconnectTimer = null;
-    }
-    this.realtimeReconnectAttempt = 0;
-    this.stopLongPolling();
-    this.realtimeRefreshPending = false;
-    const socketTask = this.roomSocketTask;
-    this.roomSocketTask = null;
-    if (socketTask && typeof socketTask.close === 'function') {
-      try {
-        socketTask.close({ code: 1000, reason: 'page hidden' });
-      } catch {
-        // The SDK may already have closed the task.
-      }
-    }
-    if (this.data.realtimeConnected) this.setData({ realtimeConnected: false });
+  stopFunctionSync() {
+    if (!this.functionSyncTimer) return;
+    clearInterval(this.functionSyncTimer);
+    this.functionSyncTimer = null;
   },
 
-  async connectRealtime(generation) {
-    if (!this.realtimeStarted || generation !== this.realtimeGeneration) return;
-    const roomCode = encodeURIComponent(this.data.roomCode);
-    let timedOut = false;
-    let connectionPromise;
-    let connectTimeoutTimer = null;
-    try {
-      connectionPromise = Promise.resolve(app.connectContainer(`/ws/mahjong?roomCode=${roomCode}`));
-    } catch (error) {
-      console.warn('[mahjong realtime] websocket fallback:', error?.message || error);
-      if (generation === this.realtimeGeneration && this.realtimeStarted) {
-        this.startLongPolling(generation);
-        this.scheduleRealtimeReconnect(generation);
-      }
-      return;
-    }
-    connectionPromise.then((lateResult) => {
-      if (!timedOut) return;
-      const lateSocket = lateResult?.socketTask || lateResult;
-      if (lateSocket && typeof lateSocket.close === 'function') lateSocket.close();
-    }).catch(() => {});
-    try {
-      const result = await Promise.race([
-        connectionPromise,
-        new Promise((resolve, reject) => {
-          connectTimeoutTimer = setTimeout(() => {
-            timedOut = true;
-            reject(new Error('WebSocket 连接超时'));
-          }, REALTIME_CONNECT_TIMEOUT_MS);
-        }),
-      ]);
-      if (connectTimeoutTimer) {
-        clearTimeout(connectTimeoutTimer);
-        connectTimeoutTimer = null;
-      }
-      const socketTask = result?.socketTask || result;
-      if (!socketTask || generation !== this.realtimeGeneration || !this.realtimeStarted) {
-        if (socketTask && typeof socketTask.close === 'function') socketTask.close();
-        return;
-      }
-
-      this.roomSocketTask = socketTask;
-      let lost = false;
-      let openTimer = null;
-      const handleLost = (reason) => {
-        if (lost || generation !== this.realtimeGeneration || !this.realtimeStarted) return;
-        lost = true;
-        if (openTimer) {
-          clearTimeout(openTimer);
-          openTimer = null;
+  syncRoomRevision() {
+    if (this.functionSyncPromise || !this.data.roomCode || this.data.isArchived) return this.functionSyncPromise;
+    this.functionSyncPromise = requestMahjongCore('getMahjongRoomRevision', { roomCode: this.data.roomCode })
+      .then(async (state) => {
+        const revision = Number(state?.revision);
+        if (!Number.isInteger(revision)) return;
+        this.functionSyncFailureCount = 0;
+        this.functionSyncNextAllowedAt = 0;
+        if (this.roomRevision === undefined) {
+          this.roomRevision = revision;
+          return;
         }
-        if (this.roomSocketTask === socketTask) this.roomSocketTask = null;
-        if (reason) {
-          console.warn('[mahjong realtime] websocket fallback:', reason?.message || reason);
-        }
-        this.setData({ realtimeConnected: false });
-        this.startLongPolling(generation);
-        this.scheduleRealtimeReconnect(generation);
-      };
-      openTimer = setTimeout(() => {
-        handleLost(new Error('WebSocket 建立超时'));
-        try {
-          socketTask.close({ code: 1000, reason: 'open timeout' });
-        } catch {
-          // The SDK may already have closed the task.
-        }
-      }, REALTIME_CONNECT_TIMEOUT_MS);
-      socketTask.onOpen(() => {
-        if (generation !== this.realtimeGeneration || !this.realtimeStarted) return;
-        if (openTimer) {
-          clearTimeout(openTimer);
-          openTimer = null;
-        }
-        this.realtimeReconnectAttempt = 0;
-        this.setData({ realtimeConnected: true });
-        this.stopLongPolling();
+        if (revision !== this.roomRevision) await this.loadRoom(false);
+      })
+      .catch(() => {
+        this.functionSyncFailureCount = Math.min((this.functionSyncFailureCount || 0) + 1, 4);
+        const backoffMs = Math.min(60 * 1000, FUNCTION_SYNC_INTERVAL_MS * (2 ** this.functionSyncFailureCount));
+        this.functionSyncNextAllowedAt = Date.now() + backoffMs;
+        // Preserve the last successful room view while the next retry backs off.
+      })
+      .finally(() => {
+        this.functionSyncPromise = null;
       });
-      socketTask.onMessage((message) => this.handleRealtimeMessage(message));
-      socketTask.onClose(() => handleLost(new Error('WebSocket 连接已关闭')));
-      socketTask.onError((error) => handleLost(error || new Error('WebSocket 连接错误')));
-    } catch (error) {
-      if (connectTimeoutTimer) clearTimeout(connectTimeoutTimer);
-      if (generation !== this.realtimeGeneration || !this.realtimeStarted) return;
-      console.warn('[mahjong realtime] websocket fallback:', error?.message || error);
-      this.startLongPolling(generation);
-      this.scheduleRealtimeReconnect(generation);
-    }
-  },
-
-  scheduleRealtimeReconnect(generation) {
-    if (this.realtimeReconnectTimer || !this.realtimeStarted) return;
-    const attempt = this.realtimeReconnectAttempt || 0;
-    const delay = Math.min(
-      REALTIME_RECONNECT_MAX_MS,
-      REALTIME_RECONNECT_BASE_MS * (2 ** attempt),
-    );
-    this.realtimeReconnectAttempt = Math.min(attempt + 1, 30);
-    this.realtimeReconnectTimer = setTimeout(() => {
-      this.realtimeReconnectTimer = null;
-      if (generation !== this.realtimeGeneration || !this.realtimeStarted || this.roomSocketTask) return;
-      this.connectRealtime(generation);
-    }, delay);
-  },
-
-  handleRealtimeMessage(message) {
-    let payload = message?.data;
-    if (typeof payload === 'string') {
-      try {
-        payload = JSON.parse(payload);
-      } catch {
-        return;
-      }
-    }
-    if (!payload || typeof payload !== 'object') return;
-    const previousVersion = this.realtimeVersion;
-    const incomingVersion = Number(payload.version);
-    if (Number.isSafeInteger(incomingVersion)) {
-      this.realtimeVersion = Math.max(previousVersion, incomingVersion);
-    }
-    if (
-      payload.type === 'room.updated' ||
-      (payload.type === 'connected' && incomingVersion > previousVersion)
-    ) {
-      this.refreshRoomFromRealtime();
-    }
-  },
-
-  refreshRoomFromRealtime() {
-    if (!this.realtimeStarted) return;
-    this.realtimeRefreshPending = true;
-    if (this.realtimeRefreshPromise) return;
-
-    const drainRefreshes = async () => {
-      while (this.realtimeStarted && this.realtimeRefreshPending) {
-        this.realtimeRefreshPending = false;
-        await this.loadRoom(false);
-      }
-    };
-    this.realtimeRefreshPromise = drainRefreshes().finally(() => {
-      this.realtimeRefreshPromise = null;
-      if (this.realtimeStarted && this.realtimeRefreshPending) {
-        this.refreshRoomFromRealtime();
-      }
-    });
-  },
-
-  startLongPolling(generation) {
-    if (
-      !this.realtimeStarted ||
-      generation !== this.realtimeGeneration ||
-      this.realtimePollActive ||
-      this.roomSocketTask
-    ) return;
-    this.realtimePollActive = true;
-    this.runLongPolling(generation);
-  },
-
-  stopLongPolling() {
-    this.realtimePollActive = false;
-  },
-
-  async runLongPolling(generation) {
-    while (
-      this.realtimeStarted &&
-      generation === this.realtimeGeneration &&
-      this.realtimePollActive &&
-      !this.roomSocketTask
-    ) {
-      try {
-        const result = await app.request({
-          path: `/api/mahjong/rooms/${encodeURIComponent(this.data.roomCode)}/events?since=${this.realtimeVersion}`,
-          // The server returns immediately when the room changes. A longer idle
-          // wait only reduces empty fallback calls; it does not delay transfers.
-          timeout: LONG_POLL_REQUEST_TIMEOUT_MS,
-          retry: 0,
-        });
-        if (!this.realtimeStarted || generation !== this.realtimeGeneration) return;
-        const version = Number(result?.version);
-        if (Number.isSafeInteger(version) && version > this.realtimeVersion) {
-          this.realtimeVersion = version;
-          this.refreshRoomFromRealtime();
-        }
-      } catch {
-        await this.waitForRealtime(3000);
-      }
-    }
-  },
-
-  waitForRealtime(delayMs) {
-    return new Promise((resolve) => setTimeout(resolve, delayMs));
+    return this.functionSyncPromise;
   },
 
   applyRoomDetail(detail) {
+    if (Number.isInteger(Number(detail.roomRevision))) this.roomRevision = Number(detail.roomRevision);
     const user = app.globalData.user;
     const userId = user?.id || '';
     const isFreeMode = detail.room.mode === 'free';
@@ -478,9 +321,10 @@ Page({
         : seatCards.filter((seat) => seat.occupied && !seat.isMe).map((seat) => ({ id: seat.userId, name: seat.userName, type: 'user', color: seat.avatarColor }));
     const teaFeeRule = detail.room.teaFeeRule || {
       enabled: false,
-      mode: 'per_player',
+      mode: 'percentage',
       thresholdAmount: '0.00',
       ratePercent: 10,
+      feeAmount: '0.00',
       version: 0,
       updatedAt: null,
     };
@@ -591,14 +435,18 @@ Page({
   openTeaFeeRule() {
     if (!this.data.isOwner || this.data.isArchived) return;
     const rule = this.data.teaFeeRule || {};
+    const mode = rule.mode === 'threshold' || rule.mode === 'shared_total' ? 'threshold' : 'percentage';
+    // Early threshold-mode drafts had a placeholder fee of 1.00 with a zero threshold.
+    // That combination cannot produce a valid fee rule, so do not surface it as a default.
+    const hasConfiguredThreshold = mode === 'threshold' && Number(rule.thresholdAmount) > 0;
     this.setData({
       teaFeeRuleOpen: true,
       teaFeeRuleDraft: {
         enabled: Boolean(rule.enabled),
-        // 累计抽水仅展示为预留项，当前配置始终落在已实现的单人模式。
-        mode: 'per_player',
-        thresholdAmount: String(rule.thresholdAmount ?? '0.00'),
+        mode,
+        thresholdAmount: mode === 'threshold' ? String(rule.thresholdAmount ?? '0.00') : '0.00',
         ratePercent: Number(rule.ratePercent ?? 10),
+        feeAmount: hasConfiguredThreshold ? String(rule.feeAmount ?? '0.00') : '0.00',
       },
     });
   },
@@ -614,11 +462,16 @@ Page({
 
   selectTeaFeeMode(event) {
     const mode = event.currentTarget.dataset.mode;
-    if (mode === 'shared_total') {
-      wx.showToast({ title: '累计抽水模式暂未开放', icon: 'none' });
+    if (mode !== 'percentage' && mode !== 'threshold') return;
+    if (mode === 'threshold' && this.data.teaFeeRuleDraft.mode !== 'threshold') {
+      this.setData({
+        'teaFeeRuleDraft.mode': mode,
+        'teaFeeRuleDraft.thresholdAmount': '0.00',
+        'teaFeeRuleDraft.feeAmount': '0.00',
+      });
       return;
     }
-    if (mode === 'per_player') this.setData({ 'teaFeeRuleDraft.mode': mode });
+    this.setData({ 'teaFeeRuleDraft.mode': mode });
   },
 
   onTeaFeeThresholdInput(event) {
@@ -631,6 +484,10 @@ Page({
     this.setData({ 'teaFeeRuleDraft.ratePercent': ratePercent });
   },
 
+  onTeaFeeAmountInput(event) {
+    this.setData({ 'teaFeeRuleDraft.feeAmount': event.detail.value });
+  },
+
   setTeaFeeRate(event) {
     this.setData({ 'teaFeeRuleDraft.ratePercent': Number(event.currentTarget.dataset.rate) });
   },
@@ -641,32 +498,45 @@ Page({
     const draft = this.data.teaFeeRuleDraft || {};
     const threshold = Number(draft.thresholdAmount);
     const ratePercent = Number(draft.ratePercent);
+    const feeAmount = Number(draft.feeAmount);
+    const mode = draft.mode === 'threshold' ? 'threshold' : 'percentage';
     if (!user || !this.data.isOwner) return;
-    if (!Number.isFinite(threshold) || threshold < 0 || Math.round(threshold * 100) !== threshold * 100) {
-      wx.showToast({ title: '请输入正确的起抽金额', icon: 'none' });
-      return;
-    }
-    if (!Number.isInteger(ratePercent) || ratePercent < 0 || ratePercent > 100) {
+    if (mode === 'percentage' && (!Number.isInteger(ratePercent) || ratePercent < 0 || ratePercent > 100)) {
       wx.showToast({ title: '抽成比例需为 0-100 的整数', icon: 'none' });
       return;
     }
-    if (draft.enabled && draft.mode === 'shared_total') {
-      wx.showToast({ title: '累计抽水模式暂未开放', icon: 'none' });
+    if (draft.enabled && mode === 'threshold' && (!Number.isFinite(threshold) || threshold <= 0 || Math.round(threshold * 100) !== threshold * 100)) {
+      wx.showToast({ title: '请输入正确的满额金额', icon: 'none' });
+      return;
+    }
+    if (draft.enabled && mode === 'threshold' && (!Number.isFinite(feeAmount) || feeAmount <= 0 || Math.round(feeAmount * 100) !== feeAmount * 100)) {
+      wx.showToast({ title: '请输入正确的抽水金额', icon: 'none' });
       return;
     }
     this.setData({ savingTeaFeeRule: true });
     try {
-      const detail = await app.request({
-        path: `/api/mahjong/rooms/${encodeURIComponent(this.data.roomCode)}/tea-fee-rule`,
-        method: 'PATCH',
-        data: {
+      const detail = await requestMahjongCore(
+        'updateTeaFeeRule',
+        {
+          roomCode: this.data.roomCode,
           enabled: Boolean(draft.enabled),
-          mode: draft.mode === 'shared_total' ? 'shared_total' : 'per_player',
-          thresholdAmount: threshold,
-          ratePercent,
-          operatorUserId: user.id,
+          mode,
+          thresholdAmount: mode === 'threshold' ? threshold : 0,
+          ratePercent: mode === 'percentage' ? ratePercent : 0,
+          feeAmount: mode === 'threshold' ? feeAmount : 0,
         },
-      });
+        {
+          path: `/api/mahjong/rooms/${encodeURIComponent(this.data.roomCode)}/tea-fee-rule`,
+          method: 'PATCH',
+          data: {
+            enabled: Boolean(draft.enabled), mode,
+            thresholdAmount: mode === 'threshold' ? threshold : 0,
+            ratePercent: mode === 'percentage' ? ratePercent : 0,
+            feeAmount: mode === 'threshold' ? feeAmount : 0,
+            operatorUserId: user.id,
+          },
+        },
+      );
       this.applyRoomDetail(detail);
       this.setData({ teaFeeRuleOpen: false });
       wx.showToast({ title: '规则已保存', icon: 'none' });
@@ -690,11 +560,11 @@ Page({
     }
     this.setData({ switchingMode: true });
     try {
-      const detail = await app.request({
-        path: roomDetailPath(this.data.roomCode, '/mode'),
-        method: 'POST',
-        data: { mode, operatorUserId: app.globalData.user.id },
-      });
+      const detail = await requestMahjongCore(
+        'updateMahjongMode',
+        { roomCode: this.data.roomCode, mode },
+        { path: roomDetailPath(this.data.roomCode, '/mode'), method: 'POST', data: { mode, operatorUserId: app.globalData.user.id } },
+      );
       this.closeModeDialog();
       this.applyRoomDetail(detail);
     } catch (error) {
@@ -722,11 +592,12 @@ Page({
     const isChangingSeat = this.data.currentUserSeated;
     this.setData({ sittingDown: true });
     try {
-      const detail = await app.request({
-        path: roomDetailPath(this.data.roomCode, '/seats/sit'),
-        method: 'POST',
-        data: { userId: user.id, seatIndex: Number(event.currentTarget.dataset.index) },
-      });
+      const seatIndex = Number(event.currentTarget.dataset.index);
+      const detail = await requestMahjongCore(
+        'sitDown',
+        { roomCode: this.data.roomCode, seatIndex },
+        { path: roomDetailPath(this.data.roomCode, '/seats/sit'), method: 'POST', data: { userId: user.id, seatIndex } },
+      );
       this.applyRoomDetail(detail);
     } catch (error) {
       wx.showToast({ title: error.message || (isChangingSeat ? '换座失败' : '入座失败'), icon: 'none' });
@@ -744,11 +615,11 @@ Page({
     if (this.data.leavingSeat) return;
     this.setData({ leavingSeat: true });
     try {
-      const detail = await app.request({
-        path: roomDetailPath(this.data.roomCode, '/seats/leave'),
-        method: 'POST',
-        data: { userId: user.id },
-      });
+      const detail = await requestMahjongCore(
+        'leaveSeat',
+        { roomCode: this.data.roomCode },
+        { path: roomDetailPath(this.data.roomCode, '/seats/leave'), method: 'POST', data: { userId: user.id } },
+      );
       this.applyRoomDetail(detail);
     } catch (error) {
       wx.showToast({ title: error.message || '离开座位失败', icon: 'none' });
@@ -847,19 +718,26 @@ Page({
     }
     this.setData({ submitting: true });
     try {
-      const detail = await app.request({
-        path: roomDetailPath(this.data.roomCode, '/transactions'),
-        method: 'POST',
-        data: {
-          payerId: user.id,
+      const operationId = this.transferOperationId || app.createOperationId('mahjong_transfer');
+      const detail = await requestMahjongCore(
+        'createMahjongTransaction',
+        {
+          roomCode: this.data.roomCode,
           payeeType: payee.type,
           payeeId: payee.type === 'user' ? payee.id : undefined,
           amount,
           remark: this.data.remark.trim() || undefined,
-          operatorUserId: user.id,
-          operationId: this.transferOperationId || app.createOperationId('mahjong_transfer'),
+          operationId,
         },
-      });
+        {
+          path: roomDetailPath(this.data.roomCode, '/transactions'),
+          method: 'POST',
+          data: {
+            payerId: user.id, payeeType: payee.type, payeeId: payee.type === 'user' ? payee.id : undefined,
+            amount, remark: this.data.remark.trim() || undefined, operatorUserId: user.id, operationId,
+          },
+        },
+      );
       this.transferOperationId = '';
       this.setData({ transferOpen: false, amountInputFocus: false, amount: '', remark: '' });
       this.applyRoomDetail(detail);
@@ -884,11 +762,14 @@ Page({
         if (!result.confirm) return;
         this.setData({ reversingTransactionId: transactionId });
         try {
-          const detail = await app.request({
-            path: roomDetailPath(this.data.roomCode, `/transactions/${encodeURIComponent(transactionId)}/reverse`),
-            method: 'POST',
-            data: { operatorUserId: app.globalData.user.id },
-          });
+          const detail = await requestMahjongCore(
+            'reverseMahjongTransaction',
+            { roomCode: this.data.roomCode, transactionId },
+            {
+              path: roomDetailPath(this.data.roomCode, `/transactions/${encodeURIComponent(transactionId)}/reverse`),
+              method: 'POST', data: { operatorUserId: app.globalData.user.id },
+            },
+          );
           this.applyRoomDetail(detail);
         } catch (error) {
           wx.showToast({ title: error.message || '冲正失败', icon: 'none' });
@@ -913,11 +794,11 @@ Page({
         if (!result.confirm) return;
         this.setData({ exitingRoom: true });
         try {
-          await app.request({
-            path: roomDetailPath(this.data.roomCode, '/leave'),
-            method: 'POST',
-            data: { userId: user.id },
-          });
+          await requestMahjongCore(
+            'leaveMahjongRoom',
+            { roomCode: this.data.roomCode },
+            { path: roomDetailPath(this.data.roomCode, '/leave'), method: 'POST', data: { userId: user.id } },
+          );
           wx.navigateBack();
         } catch (error) {
           wx.showToast({ title: error.message || '退出失败', icon: 'none' });

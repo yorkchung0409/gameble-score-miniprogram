@@ -13,6 +13,14 @@ Page({
     overview: null,
   },
 
+  onShareAppMessage() {
+    return app.getDefaultShareMessage();
+  },
+
+  onShareTimeline() {
+    return app.getDefaultTimelineShare();
+  },
+
   onLoad() {
     this.loadOverview();
   },
@@ -68,9 +76,8 @@ Page({
         reversalsInLast24Hours: formatCount(overview.transactions?.reversalsInLast24Hours),
       },
       realtime: {
-        localConnections: formatCount(overview.realtime?.localConnections),
-        localRooms: formatCount(overview.realtime?.localRooms),
-        localLongPollWaiters: formatCount(overview.realtime?.localLongPollWaiters),
+        mode: overview.realtime?.mode === 'cloud_database_watch' ? '云数据库监听' : '云函数刷新',
+        refreshFallbackSeconds: formatCount(overview.realtime?.refreshFallbackSeconds || 15),
       },
     });
   },

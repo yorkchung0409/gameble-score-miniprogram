@@ -40,11 +40,10 @@
 
   <view class="section">
     <text class="section-title">实时同步</text>
-    <view class="metric-grid three-columns">
-      <view class="metric"><text class="metric-value">{{overview.realtime.localConnections}}</text><text class="metric-label">本实例连接</text></view>
-      <view class="metric"><text class="metric-value">{{overview.realtime.localRooms}}</text><text class="metric-label">同步中的房间</text></view>
-      <view class="metric"><text class="metric-value">{{overview.realtime.localLongPollWaiters}}</text><text class="metric-label">长轮询等待</text></view>
+    <view class="metric-grid">
+      <view class="metric"><text class="metric-value">{{overview.realtime.mode}}</text><text class="metric-label">麻将房推送方式</text></view>
+      <view class="metric"><text class="metric-value">{{overview.realtime.refreshFallbackSeconds}} 秒</text><text class="metric-label">未收到推送时刷新</text></view>
     </view>
-    <text class="section-note">实时连接仅统计当前云托管实例；多实例时请以云托管监控为准。</text>
+    <text class="section-note">云托管不参与日常同步；房间版本由云函数轮询，网络异常时自动重试。</text>
   </view>
 </view>
