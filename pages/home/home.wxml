@@ -24,6 +24,7 @@
   <view class="entry-section poker-section">
     <text class="section-heading">扑克记账</text>
     <button class="action-button poker-button" disabled="{{serviceStarting}}" bindtap="openPokerCreate">创建账本</button>
+    <button class="action-button insurance-button" bindtap="openInsurance">保险</button>
   </view>
 
   <view wx:if="{{recentLoaded}}" class="recent-section">
@@ -97,6 +98,14 @@
         <text class="guide-section-title">扑克</text>
         <view class="guide-item"><text class="guide-bullet">·</text><text>账本是创建者个人使用的记账本，不与他人协作。</text></view>
         <view class="guide-item"><text class="guide-bullet">·</text><text>记录玩家买入和结余即可自动计算净盈亏；历史可查看日期、人数和明细。</text></view>
+      </view>
+
+      <view class="guide-section">
+        <text class="guide-section-title">保险</text>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>保险用于辅助估算德州扑克转牌、河牌的保险买入与结算，不会产生真实资金交易。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>未录入完整牌局时，可拖动或点击选择 outs 和赔率进行预览；填写公共牌、手牌及底池后，点击“按当前牌局计算”查看真实牌面结果。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>可先选择预设购买人并填写买入金额；点击计算后，买入会带入该玩家的主底池，真实 outs 和赔率以牌面计算为准。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>转牌和河牌保险独立计算；牌局、预设和保险配置仅保存在当前设备。</text></view>
       </view>
 
       <view class="guide-section guide-section-last">

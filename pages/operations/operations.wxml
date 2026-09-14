@@ -14,10 +14,9 @@
 
   <view class="section">
     <text class="section-title">用户</text>
-    <view class="metric-grid three-columns">
+    <view class="metric-grid">
       <view class="metric"><text class="metric-value">{{overview.users.total}}</text><text class="metric-label">累计用户</text></view>
       <view class="metric"><text class="metric-value">{{overview.users.newIn24Hours}}</text><text class="metric-label">24 小时新增</text></view>
-      <view class="metric"><text class="metric-value">{{overview.users.activeIn5Minutes}}</text><text class="metric-label">5 分钟操作</text></view>
     </view>
   </view>
 
@@ -29,21 +28,4 @@
     </view>
   </view>
 
-  <view class="section">
-    <text class="section-title">转账</text>
-    <view class="metric-grid three-columns">
-      <view class="metric"><text class="metric-value">{{overview.transactions.inLastHour}}</text><text class="metric-label">近 1 小时</text></view>
-      <view class="metric"><text class="metric-value">{{overview.transactions.inLast24Hours}}</text><text class="metric-label">近 24 小时</text></view>
-      <view class="metric"><text class="metric-value">{{overview.transactions.reversalsInLast24Hours}}</text><text class="metric-label">24 小时冲正</text></view>
-    </view>
-  </view>
-
-  <view class="section">
-    <text class="section-title">实时同步</text>
-    <view class="metric-grid">
-      <view class="metric"><text class="metric-value">{{overview.realtime.mode}}</text><text class="metric-label">麻将房推送方式</text></view>
-      <view class="metric"><text class="metric-value">{{overview.realtime.refreshFallbackSeconds}} 秒</text><text class="metric-label">未收到推送时刷新</text></view>
-    </view>
-    <text class="section-note">云托管不参与日常同步；房间版本由云函数轮询，网络异常时自动重试。</text>
-  </view>
 </view>

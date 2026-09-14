@@ -38,9 +38,9 @@ function automaticFee(row) {
 }
 
 async function getUser(connection, userId) {
-  const [[user]] = await connection.execute('SELECT id, name, device_id AS deviceId, created_at AS createdAt FROM users WHERE id = ? LIMIT 1', [userId]);
+  const [[user]] = await connection.execute('SELECT id, name, device_id AS deviceId, created_at AS createdAt, nickname_changed_at AS nicknameChangedAt FROM users WHERE id = ? LIMIT 1', [userId]);
   if (!user) throw new CoreError('用户不存在', 'NOT_FOUND');
-  return { id: user.id, name: user.name, createdAt: asIso(user.createdAt) };
+  return { id: user.id, name: user.name, createdAt: asIso(user.createdAt), nicknameChangedAt: asIso(user.nicknameChangedAt) };
 }
 
 async function getPokerLedgers(connection, userId, input = {}) {
@@ -65,7 +65,9 @@ async function getPokerLedgers(connection, userId, input = {}) {
   for (const snapshot of snapshots) snapshotByRoom.set(snapshot.roomId, { netCents: amountToCents(snapshot.netProfit), gameCount: Number(snapshot.gameCount || 0) });
   if (selfPlayerIds.length) {
     const [rows] = await connection.execute(
-      `SELECT player_id AS playerId, net_profit AS netProfit FROM game_players WHERE player_id IN (${placeholders(selfPlayerIds)})`, selfPlayerIds,
+      `SELECT gp.player_id AS playerId, gp.net_profit AS netProfit, g.room_id AS roomId, g.created_at AS createdAt
+         FROM game_players AS gp INNER JOIN games AS g ON g.id = gp.game_id
+        WHERE gp.player_id IN (${placeholders(selfPlayerIds)})`, selfPlayerIds,
     );
     for (const row of rows) {
       const total = totalsByPlayer.get(row.playerId) || { netCents: 0, gameCount: 0 };
@@ -102,7 +104,9 @@ async function getPokerTotals(connection, userId) {
   const snapshotByRoom = new Map(snapshots.map((row) => [row.roomId, row]));
   const [currentRows] = selfPlayerIds.length
     ? await connection.execute(
-      `SELECT player_id AS playerId, net_profit AS netProfit FROM game_players WHERE player_id IN (${placeholders(selfPlayerIds)})`, selfPlayerIds,
+      `SELECT gp.player_id AS playerId, gp.net_profit AS netProfit, g.room_id AS roomId, g.created_at AS createdAt
+         FROM game_players AS gp INNER JOIN games AS g ON g.id = gp.game_id
+        WHERE gp.player_id IN (${placeholders(selfPlayerIds)})`, selfPlayerIds,
     )
     : [[]];
   const currentByPlayer = new Map();
@@ -268,21 +272,13 @@ function isAdmin(openId) {
 
 async function getOperationsOverview(connection, openId) {
   if (!isAdmin(openId)) throw new CoreError('无权访问运营数据', 'FORBIDDEN');
-  const [[users], [newUsers], [activeUsers], [activeMahjong], [activePoker], [hourly], [daily], [reversals]] = await Promise.all([
+  const [[users], [newUsers], [activeMahjong], [activePoker]] = await Promise.all([
     connection.execute('SELECT COUNT(*) AS total FROM users'),
     connection.execute('SELECT COUNT(*) AS total FROM users WHERE created_at >= DATE_SUB(NOW(6), INTERVAL 1 DAY)'),
-    connection.execute(`SELECT COUNT(DISTINCT actor_id) AS total FROM (
-      SELECT payer_id AS actor_id FROM mahjong_transactions WHERE created_at >= DATE_SUB(NOW(6), INTERVAL 5 MINUTE)
-      UNION
-      SELECT payee_id AS actor_id FROM mahjong_transactions WHERE payee_type = 'user' AND created_at >= DATE_SUB(NOW(6), INTERVAL 5 MINUTE)
-    ) AS active_users WHERE actor_id IS NOT NULL`),
     connection.execute(`SELECT COUNT(DISTINCT r.id) AS total FROM mahjong_rooms AS r LEFT JOIN mahjong_transactions AS t ON t.room_id = r.id WHERE r.dissolved_at IS NULL AND (r.created_at >= DATE_SUB(NOW(6), INTERVAL 30 MINUTE) OR t.created_at >= DATE_SUB(NOW(6), INTERVAL 30 MINUTE))`),
     connection.execute('SELECT COUNT(DISTINCT room_id) AS total FROM games WHERE created_at >= DATE_SUB(NOW(3), INTERVAL 30 MINUTE)'),
-    connection.execute('SELECT COUNT(*) AS total FROM mahjong_transactions WHERE created_at >= DATE_SUB(NOW(6), INTERVAL 1 HOUR)'),
-    connection.execute('SELECT COUNT(*) AS total FROM mahjong_transactions WHERE created_at >= DATE_SUB(NOW(6), INTERVAL 1 DAY)'),
-    connection.execute('SELECT COUNT(*) AS total FROM mahjong_transactions WHERE reversal_of IS NOT NULL AND created_at >= DATE_SUB(NOW(6), INTERVAL 1 DAY)'),
   ]);
-  return { generatedAt: new Date().toISOString(), users: { total: Number(users.total || 0), newIn24Hours: Number(newUsers.total || 0), activeIn5Minutes: Number(activeUsers.total || 0) }, rooms: { activeMahjongIn30Minutes: Number(activeMahjong.total || 0), activePokerIn30Minutes: Number(activePoker.total || 0) }, transactions: { inLastHour: Number(hourly.total || 0), inLast24Hours: Number(daily.total || 0), reversalsInLast24Hours: Number(reversals.total || 0) }, realtime: { mode: 'revision_polling', refreshFallbackSeconds: 15 } };
+  return { generatedAt: new Date().toISOString(), users: { total: Number(users.total || 0), newIn24Hours: Number(newUsers.total || 0) }, rooms: { activeMahjongIn30Minutes: Number(activeMahjong.total || 0), activePokerIn30Minutes: Number(activePoker.total || 0) } };
 }
 
 async function dispatchProfileAction(connection, openId, event) {
@@ -303,4 +299,4 @@ async function dispatchProfileAction(connection, openId, event) {
   throw new CoreError('不支持的个人数据操作', 'UNSUPPORTED_ACTION');
 }
 
-module.exports = { dispatchProfileAction, getPokerLedgers, getMahjongRooms, getSummary };
+module.exports = { dispatchProfileAction, getPokerLedgers, getPokerTotals, getMahjongRooms, getMahjongOpponents, getSummary };

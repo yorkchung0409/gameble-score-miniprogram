@@ -214,7 +214,7 @@ test('creating a Mahjong room keeps its loading state through navigation', async
   let navigation;
   const app = {
     globalData: { user: { id: 'u1', name: '玩家1' } },
-    request: async () => ({ room: { roomCode: 'NEW123' } }),
+    mahjongCore: async () => ({ room: { roomCode: 'NEW123' } }),
   };
   const { definition } = loadPage('pages/home/home.js', app, {
     navigateTo(options) { navigation = options; },
@@ -243,7 +243,7 @@ test('newly created Mahjong room renders its preview before detail refresh compl
       pendingMahjongRooms: { NEW123: preview },
     },
     login: async () => ({ user: app.globalData.user }),
-    request: () => new Promise((resolve) => { releaseDetail = resolve; }),
+    mahjongCore: () => new Promise((resolve) => { releaseDetail = resolve; }),
   };
   const { definition } = loadPage('pages/room/room.js', app);
   const page = createPage(definition);
@@ -413,9 +413,9 @@ test('rapid transfer taps issue one write and include a stable operation id', as
   const app = {
     globalData: { user: { id: 'u1', name: '玩家1' } },
     createOperationId: () => 'mahjong_transfer_test',
-    request(options) {
+    mahjongCore(action, data) {
       requestCount += 1;
-      sentData = options.data;
+      sentData = data;
       return new Promise((resolve) => { releaseRequest = resolve; });
     },
   };
@@ -443,7 +443,7 @@ test('seat changes apply the mutation response without an extra room request', a
   let requests = 0;
   const app = {
     globalData: { user: { id: 'u1', name: '玩家1' } },
-    request: async () => { requests += 1; return detail; },
+    mahjongCore: async () => { requests += 1; return detail; },
   };
   const { definition } = loadPage('pages/room/room.js', app);
   const page = createPage(definition, { roomCode: 'ABC123' });
@@ -625,7 +625,7 @@ test('saving a nickname uses the Cloud Function before Cloud Hosting', async () 
   assert.equal(page.data.needsNickname, false);
 });
 
-test('saving a nickname falls back when an older Cloud Function lacks the action', async () => {
+test('saving a nickname does not fall back to a second request path', async () => {
   let fallbackCalls = 0;
   const app = {
     globalData: { user: { id: 'u1', name: '微信用户' } },
@@ -649,8 +649,8 @@ test('saving a nickname falls back when an older Cloud Function lacks the action
 
   await page.saveProfile();
 
-  assert.equal(fallbackCalls, 1);
-  assert.equal(page.data.user.name, '新昵称');
+  assert.equal(fallbackCalls, 0);
+  assert.equal(page.data.user.name, '微信用户');
 });
 
 test('poker settings are saved with one atomic request', async () => {

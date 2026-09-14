@@ -6,7 +6,11 @@
 
 1. 在 `project.config.json` 填入你的小程序 AppID。
 2. `app.js` 中的 `CLOUDBASE_FUNCTION_ENV` 必须与已部署 `gameble-bootstrap-probe` 的云开发环境一致。
-3. 在微信开发者工具上传 `cloudfunctions/gameble-bootstrap-probe`，并在函数环境变量中配置独立 MySQL 账号的 `DB_HOST`、`DB_PORT`、`DB_USER`、`DB_PASSWORD`、`DB_NAME`；若要保留“我的”页管理员入口，也设置 `ADMIN_WECHAT_OPENIDS`。
+3. 在微信开发者工具上传 `cloudfunctions/gameble-bootstrap-probe`，并在函数环境变量中配置独立 MySQL 账号的 `DB_HOST`、`DB_PORT`、`DB_USER`、`DB_PASSWORD`、`DB_NAME`；若要保留“我的”页管理员入口，也设置 `ADMIN_WECHAT_OPENIDS`。函数目录内的 `config.json` 会为同一函数注册每日历史清理触发器。
+
+首次部署新版本前，在后端目录执行一次 `node scripts/migrate-db.js`。本次迁移增加 `users.nickname_changed_at`，并将已有自定义昵称标记为不可再次修改；迁移脚本可重复执行。
+
+上传云函数后，在云开发控制台的“触发器”列表确认 `dailyRetentionCleanup` 已启用；它会每天清理六个月以前的明细并累加历史快照。无需启动或更新云托管服务。
 
 `wx.cloud.callFunction` 会把微信身份交给函数运行时，服务端使用注入的 OpenID 建立用户，不需要将 AppSecret 配置到任何运行环境。昵称使用 `input type="nickname"`，由用户主动选择或输入；不会使用已失效的直接用户资料授权接口。
 

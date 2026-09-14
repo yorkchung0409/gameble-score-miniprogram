@@ -15,10 +15,8 @@ function roomDetailPath(roomCode, suffix = '', offset = 0) {
 }
 
 async function requestMahjongCore(action, data) {
-  if (typeof app.mahjongCore === 'function') return app.mahjongCore(action, data);
-  // This branch only supports older embedded shells during development. The
-  // production App adapter routes requests back to the same Cloud Function.
-  return app.request({ action, data });
+  if (typeof app.mahjongCore !== 'function') throw new Error('当前版本不支持麻将云函数，请重新进入小程序');
+  return app.mahjongCore(action, data);
 }
 
 Page({

@@ -1,0 +1,857 @@
+page {
+  background: #FAF9F6;
+  color: #2F2925;
+  font-size: 28rpx;
+}
+
+view,
+text,
+button,
+input,
+picker {
+  box-sizing: border-box;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 32rpx 28rpx 64rpx;
+}
+
+.section {
+  margin-bottom: 24rpx;
+  padding: 24rpx;
+  border: 1rpx solid #E8DED4;
+  border-radius: 10rpx;
+  background: #FFFFFF;
+}
+
+.section-title {
+  margin-bottom: 18rpx;
+  color: #80656D;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.muted { color: #6E6259; font-size: 24rpx; line-height: 1.5; }
+
+.button-row,
+.mode-row,
+.card-row,
+.street-row,
+.summary-grid {
+  display: flex;
+  gap: 12rpx;
+}
+
+.player-row { display: flex; flex-direction: column; gap: 16rpx; }
+
+button {
+  margin: 0;
+  padding: 12rpx 20rpx;
+  border: 1rpx solid #DACAC0;
+  border-radius: 8rpx;
+  background: #FFFFFF;
+  color: #2F2925;
+  font-size: 26rpx;
+  line-height: 1.4;
+}
+
+button::after {
+  border: 0;
+}
+
+.active {
+  border-color: #80656D;
+  background: #80656D;
+  color: #FFFFFF;
+}
+
+.field {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 16rpx;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 8rpx;
+  color: #6E6259;
+  font-size: 24rpx;
+}
+
+input,
+.picker-value {
+  width: 100%;
+  min-height: 76rpx;
+  padding: 18rpx;
+  border: 1rpx solid #E4D8CE;
+  border-radius: 8rpx;
+  background: #FFFFFF;
+  color: #2F2925;
+}
+
+.card-row {
+  flex-wrap: wrap;
+}
+
+.card-field {
+  width: calc(20% - 10rpx);
+}
+
+.player-card {
+  flex: 1;
+  min-width: 0;
+}
+
+.pool-card {
+  margin-top: 18rpx;
+  padding: 18rpx;
+  border: 1rpx solid #E7D8CE;
+  border-radius: 8rpx;
+  background: #FCF7F4;
+}
+
+.buyer-panel {
+  margin-top: 18rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid #E8DED4;
+}
+
+.pool-title {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-bottom: 14rpx;
+  color: #80656D;
+  font-weight: 700;
+}
+
+.pool-title text {
+  min-width: 0;
+}
+
+.street-card {
+  flex: 1 1 280rpx;
+  min-width: 0;
+  padding: 14rpx;
+  border: 1rpx solid #E8DED4;
+  border-radius: 8rpx;
+  background: #FAF5F1;
+}
+
+.summary-grid { flex-wrap: wrap; margin-top: 12rpx; }
+
+.summary-item {
+  flex: 1 1 180rpx;
+  min-width: 0;
+}
+
+.summary-value {
+  display: block;
+  margin-top: 6rpx;
+  color: #80656D;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.history-item {
+  margin-top: 10rpx;
+  padding: 12rpx;
+  border-left: 4rpx solid #80656D;
+  background: #FAF5F1;
+  color: #6E6259;
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.error {
+  margin-top: 12rpx;
+  color: #B84E43;
+}
+
+/* Match the target mini-program's page rhythm and component language. */
+.page {
+  box-sizing: border-box;
+  padding: 36rpx 32rpx 64rpx;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-bottom: 12rpx;
+}
+
+.page-title {
+  color: #2F2925;
+  font-size: 42rpx;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.page-subtitle {
+  display: block;
+  margin-top: 8rpx;
+  color: #6E6259;
+  font-size: 25rpx;
+  line-height: 1.4;
+}
+
+.header-status {
+  flex: 0 0 auto;
+  padding: 8rpx 12rpx;
+  border: 1rpx solid #D8E2DD;
+  border-radius: 999rpx;
+  background: #F5F8F6;
+  color: #347258;
+  font-size: 21rpx;
+}
+
+.section {
+  margin: 22rpx 0 0;
+  padding: 26rpx;
+  border-radius: 12rpx;
+  background: #FFFFFF;
+}
+
+.section-heading-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-bottom: 20rpx;
+}
+
+.section-heading-row .section-title {
+  margin: 0;
+  color: #2F2925;
+  font-size: 31rpx;
+}
+
+.section-note {
+  flex: 0 0 auto;
+  color: #7A6E65;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.mode-row {
+  display: flex;
+  gap: 8rpx;
+  margin: 0;
+  padding: 6rpx;
+  border-radius: 8rpx;
+  background: #F1E8E1;
+}
+
+.mode-row button {
+  flex: 1;
+  min-width: 0;
+  padding: 17rpx 8rpx;
+  border: 0;
+  border-radius: 6rpx;
+  background: transparent;
+  color: #6E6259;
+  font-size: 27rpx;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.mode-row button.active {
+  border: 0;
+  background: #FFFFFF;
+  color: #347258;
+  box-shadow: 0 2rpx 8rpx rgba(77, 55, 44, 0.08);
+}
+
+.button-row {
+  flex-wrap: wrap;
+}
+
+.button-row > .field {
+  flex: 1 1 260rpx;
+}
+
+.action-button {
+  width: 100%;
+  min-height: 78rpx;
+  margin: 0 0 18rpx;
+  border-radius: 10rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 78rpx;
+}
+
+.recalc-button {
+  background: #80656D;
+  color: #FFFFFF;
+}
+
+.recalc-note {
+  margin: -8rpx 0 16rpx;
+  color: #6E6259;
+  font-size: 22rpx;
+  line-height: 1.45;
+}
+
+.players-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+  margin-top: 20rpx;
+}
+
+.players-grid > .player-card {
+  min-width: 0;
+  padding: 20rpx;
+  border: 1rpx solid #E8DED4;
+  border-radius: 8rpx;
+  background: #FCF9F6;
+}
+
+.players-grid > .player-card .field-label {
+  color: #365E4D;
+  font-weight: 700;
+}
+
+.players-grid > .player-card .card-row {
+  gap: 8rpx;
+}
+
+.players-grid > .player-card .muted {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+}
+
+.pool-card {
+  margin-top: 18rpx;
+  padding: 20rpx;
+  border-color: #D8E2DD;
+  border-radius: 10rpx;
+  background: #F5F8F6;
+}
+
+.pool-title {
+  color: #365E4D;
+  font-size: 28rpx;
+}
+
+.buyer-panel {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top-color: #D8E2DD;
+}
+
+.street-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+}
+
+.street-card {
+  min-width: 0;
+  padding: 18rpx;
+  border-color: #E8DED4;
+  border-radius: 8rpx;
+  background: #FFFFFF;
+}
+
+.probability-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10rpx;
+  margin-top: 14rpx;
+  padding: 12rpx;
+  border: 1rpx solid #E8DED4;
+  border-radius: 8rpx;
+  background: #FFFFFF;
+}
+
+.probability-strip .summary-item {
+  min-width: 0;
+}
+
+.probability-strip .summary-value {
+  font-size: 28rpx;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+
+.summary-grid .summary-item {
+  min-width: 0;
+  padding: 16rpx;
+  border: 1rpx solid #E8DED4;
+  border-radius: 8rpx;
+  background: #FFFFFF;
+}
+
+.summary-value {
+  color: #365E4D;
+  font-size: 30rpx;
+}
+
+.settlement-row {
+  margin-top: 10rpx;
+  padding: 16rpx;
+  border: 1rpx solid #E8DED4;
+  border-radius: 8rpx;
+  background: #FFFFFF;
+}
+
+.settlement-row-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12rpx;
+  color: #5E6B73;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.settlement-probability {
+  flex: 0 0 auto;
+  color: #8F631E;
+}
+
+.settlement-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10rpx;
+  margin-top: 12rpx;
+}
+
+.settlement-metrics view {
+  min-width: 0;
+  padding-top: 8rpx;
+  border-top: 1rpx solid #F0E7DF;
+}
+
+.settlement-metrics view text {
+  display: block;
+  color: #7A6E65;
+  font-size: 21rpx;
+  line-height: 1.35;
+}
+
+.settlement-metrics view text + text {
+  margin-top: 4rpx;
+  color: #2F2925;
+  font-size: 25rpx;
+  font-weight: 700;
+}
+
+.history-label {
+  display: block;
+  margin-bottom: 4rpx;
+  color: #5E6B73;
+  font-weight: 700;
+}
+
+.positive {
+  color: #2E7D5B !important;
+}
+
+.negative {
+  color: #B84E43 !important;
+}
+
+.inline-reset-button {
+  min-width: 112rpx;
+  min-height: 54rpx;
+  margin-top: 16rpx;
+  padding: 0 18rpx;
+  border: 1rpx solid #D8D1DE;
+  border-radius: 8rpx;
+  background: #FFFFFF;
+  color: #6E6259;
+  font-size: 22rpx;
+  line-height: 52rpx;
+}
+
+@media screen and (max-width: 700rpx) {
+  .players-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6rpx;
+  }
+}
+
+.insurance-placeholder {
+  margin-top: 6rpx;
+  padding: 18rpx;
+  border: 1rpx solid #E8DED4;
+  border-radius: 10rpx;
+  background: #FCF9F6;
+}
+
+.placeholder-note {
+  margin-bottom: 16rpx;
+  color: #7A6E65;
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
+.street-row {
+  grid-template-columns: 1fr;
+  gap: 18rpx;
+}
+
+.street-card {
+  padding: 24rpx;
+  border-color: #D8D1DE;
+  background: #FFFFFF;
+}
+
+.street-card-pending {
+  background: #FCF9F6;
+}
+
+.street-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.street-card-name {
+  display: block;
+  color: #8F631E;
+  font-size: 31rpx;
+  font-weight: 700;
+}
+
+.street-status-text {
+  display: block;
+  margin-top: 6rpx;
+  color: #6E6259;
+  font-size: 21rpx;
+}
+
+.street-odds-summary {
+  display: flex;
+  min-width: 132rpx;
+  flex-direction: column;
+  align-items: flex-end;
+  color: #7A6E65;
+  font-size: 21rpx;
+}
+
+.street-odds-number {
+  color: #8F631E;
+  font-size: 54rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.auto-odds-button {
+  min-height: 42rpx;
+  margin-top: 8rpx;
+  padding: 3rpx 14rpx;
+  border: 1rpx solid #D8C59E;
+  border-radius: 22rpx;
+  background: #FFFFFF;
+  color: #8F631E;
+  font-size: 20rpx;
+  line-height: 34rpx;
+}
+
+.auto-odds-active {
+  background: #F7F0DF;
+  color: #765117;
+}
+
+.street-description {
+  margin: 20rpx 0;
+  color: #6E6259;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.street-outs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+  color: #6E6259;
+  font-size: 24rpx;
+}
+
+.street-outs-row input {
+  width: 150rpx;
+  min-height: 62rpx;
+  padding: 8rpx 14rpx;
+  color: #2F2925;
+  font-size: 30rpx;
+  font-weight: 700;
+  text-align: center;
+}
+
+.street-outs-pending {
+  min-width: 150rpx;
+  padding: 15rpx 14rpx;
+  border: 1rpx solid #E4D8CE;
+  border-radius: 8rpx;
+  background: #FFFFFF;
+  color: #2F2925;
+  text-align: center;
+}
+
+.preview-buyer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin: 18rpx 0;
+}
+
+.preview-buyer-row .field-label {
+  margin: 0;
+}
+
+.preview-buyer-picker {
+  min-width: 180rpx;
+}
+
+.preview-picker-value,
+.preview-outs-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  border-color: #B8A089;
+  color: #513D31;
+  font-weight: 700;
+}
+
+.preview-picker-value {
+  min-height: 62rpx;
+  padding: 12rpx 14rpx;
+  border: 1rpx solid #B8A089;
+  border-radius: 8rpx;
+  background: #FFFDF9;
+}
+
+.preview-picker-chevron,
+.preview-outs-chevron {
+  color: #80656D;
+  font-size: 28rpx;
+  line-height: 1;
+}
+
+.preview-outs-picker {
+  min-width: 150rpx;
+}
+
+.preview-outs-picker .street-outs-pending {
+  min-width: 0;
+}
+
+.odds-scale,
+.odds-position-row {
+  display: grid;
+  grid-template-columns: repeat(17, minmax(0, 1fr));
+}
+
+.odds-scale {
+  margin-top: 6rpx;
+}
+
+.odds-scale-item {
+  display: flex;
+  min-width: 0;
+  min-height: 44rpx;
+  align-items: center;
+  justify-content: center;
+  color: #766F69;
+  font-size: 18rpx;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.odds-scale-selected {
+  border-radius: 5rpx 5rpx 0 0;
+  background: #F7F0DF;
+  color: #8F631E;
+  font-weight: 700;
+}
+
+.odds-position-row {
+  margin-top: 4rpx;
+}
+
+.odds-position-item {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  color: #8B837C;
+  font-size: 17rpx;
+}
+
+.odds-position-bar {
+  width: calc(100% - 8rpx);
+  height: 5rpx;
+  margin-top: 8rpx;
+  border-radius: 5rpx;
+  background: #DDD6D0;
+}
+
+.odds-position-selected {
+  color: #8F631E;
+  font-weight: 700;
+}
+
+.odds-position-selected .odds-position-bar {
+  background: #C69A2E;
+}
+
+.odds-slider {
+  display: block;
+  width: 100%;
+  margin: 18rpx 0 24rpx;
+}
+
+.outs-slider {
+  display: block;
+  width: 100%;
+  margin: 0 0 24rpx;
+}
+
+.money-input {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-height: 82rpx;
+  box-sizing: border-box;
+  padding: 0 20rpx;
+  border: 1rpx solid #D8D1DE;
+  border-radius: 10rpx;
+  background: #FFFFFF;
+}
+
+.money-input input {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #2F2925;
+  font-size: 38rpx;
+  font-weight: 700;
+}
+
+.money-input text:last-child {
+  color: #7A6E65;
+  font-size: 28rpx;
+}
+
+.money-input-disabled {
+  justify-content: space-between;
+  color: #A7A099;
+  font-size: 38rpx;
+  font-weight: 700;
+}
+
+.max-buy-text {
+  margin-top: 8rpx;
+  color: #8B837C;
+  font-size: 21rpx;
+}
+
+.ratio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.ratio-button {
+  display: flex;
+  min-width: 92rpx;
+  min-height: 56rpx;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 14rpx;
+  border: 1rpx solid #D8D1DE;
+  border-radius: 28rpx;
+  background: #FFFFFF;
+  color: #6E6259;
+  font-size: 22rpx;
+  line-height: 56rpx;
+}
+
+.ratio-button-disabled {
+  background: #F8F4F0;
+  color: #ACA39B;
+}
+
+.payout-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-top: 22rpx;
+  padding: 18rpx 20rpx;
+  border: 1rpx solid #D8C59E;
+  border-radius: 10rpx;
+  background: #FCF9F6;
+  color: #6E6259;
+  font-size: 26rpx;
+}
+
+.payout-box text:last-child {
+  flex: 0 0 auto;
+  color: #8F631E;
+  font-size: 38rpx;
+  font-weight: 700;
+}
+
+.street-status-picker {
+  display: block;
+  margin-top: 16rpx;
+}
+
+.street-status-picker .picker-value {
+  min-height: 58rpx;
+  padding: 10rpx 14rpx;
+  color: #7A6E65;
+  font-size: 21rpx;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+}
+
+.configuration-mode-section {
+  order: 1;
+}
+
+.configuration-cards-section {
+  order: 2;
+}
+
+.configuration-pot-section {
+  order: 3;
+}
+
+.insurance-section {
+  order: 4;
+}
+
+.round-summary-section {
+  order: 5;
+}

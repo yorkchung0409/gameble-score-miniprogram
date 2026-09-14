@@ -133,7 +133,6 @@ Page({
       });
       return true;
     } catch {
-      // The Cloud Hosting refresh remains the authoritative fallback.
       return false;
     }
   },
@@ -191,6 +190,10 @@ Page({
     this.setTabBarVisible(false);
   },
 
+  openInsurance() {
+    wx.navigateTo({ url: '/insurance-module/pages/insurance/index' });
+  },
+
   closePokerCreate() {
     this.setData({ showPokerCreate: false });
     this.setTabBarVisible(true);
@@ -231,17 +234,7 @@ Page({
     try {
       const user = await this.ensureMahjongUser();
       if (!user) return;
-      let result;
-      try {
-        result = await app.mahjongCore('createMahjongRoom', { name: '麻将牌局', operationId });
-      } catch (coreError) {
-        if (coreError.coreBusiness) throw coreError;
-        result = await app.request({
-          path: '/api/mahjong/rooms',
-          method: 'POST',
-            data: { name: '麻将牌局', creatorUserId: user.id, operationId },
-        });
-      }
+      const result = await app.mahjongCore('createMahjongRoom', { name: '麻将牌局', operationId });
       const roomCode = result.room.roomCode;
       app.globalData.pendingMahjongRooms = app.globalData.pendingMahjongRooms || {};
       app.globalData.pendingMahjongRooms[roomCode] = createMahjongPreviewDetail(result.room, user);

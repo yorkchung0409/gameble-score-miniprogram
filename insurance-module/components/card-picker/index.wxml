@@ -1,0 +1,32 @@
+<view class="card-control" bindtap="openPicker">
+  <view class="card-strip">
+    <view wx:for="{{selectedValues}}" wx:key="*this" class="mini-card {{item[1] === 'h' || item[1] === 'd' ? 'card-red' : 'card-black'}}">
+      <text>{{item[0]}}</text><text>{{item[1] === 's' ? '♠' : item[1] === 'h' ? '♥' : item[1] === 'd' ? '♦' : '♣'}}</text>
+    </view>
+    <view wx:if="{{!selectedValues.length}}" class="card-placeholder">{{placeholder}}</view>
+    <text class="picker-chevron">›</text>
+  </view>
+</view>
+
+<view wx:if="{{open}}" class="card-modal-mask" catchtap="onMaskTap">
+  <view class="card-modal" catchtap="stopPropagation">
+    <view class="card-modal-header">
+      <view><text class="card-modal-title">{{title}}</text><text class="card-modal-count">已选 {{draftValues.length}} / {{max}}</text></view>
+      <button class="card-modal-close" bindtap="closePicker">×</button>
+    </view>
+    <scroll-view class="card-grid-scroll" scroll-y>
+      <view class="card-grid">
+        <view wx:for="{{cardOptions}}" wx:key="value" class="option-card {{item.suitClass}} {{item.selected ? 'option-selected' : ''}} {{item.disabled ? 'option-disabled' : ''}}" data-value="{{item.value}}" bindtap="toggleCard">
+          <text class="option-rank">{{item.value[0]}}</text>
+          <text class="option-suit">{{item.displayLabel[1]}}</text>
+          <text wx:if="{{item.selected}}" class="option-check">✓</text>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="card-modal-actions">
+      <button class="card-modal-action card-action-clear" bindtap="clearCards">清空</button>
+      <button class="card-modal-action card-action-cancel" bindtap="closePicker">取消</button>
+      <button class="card-modal-action card-action-confirm" bindtap="confirmCards">确认选择</button>
+    </view>
+  </view>
+</view>

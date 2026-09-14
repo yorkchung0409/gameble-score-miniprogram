@@ -5,6 +5,7 @@ const mysql = require('mysql2/promise');
 const { CoreError, dispatchMahjongAction, loadRecentActivity } = require('./mahjong-core');
 const { dispatchPokerAction } = require('./poker-core');
 const { dispatchProfileAction } = require('./profile-core');
+const { runRetentionCleanup } = require('./retention-core');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -48,10 +49,20 @@ exports.main = async (event = {}) => {
   const startedAt = Date.now();
   try {
     const { OPENID: openId } = cloud.getWXContext();
-    if (!openId) throw new Error('Missing WeChat OpenID.');
 
     const connection = await getPool().getConnection();
     try {
+      const isTimerEvent = event?.Type === 'Timer' || event?.type === 'timer';
+      if (isTimerEvent) {
+        const retention = await runRetentionCleanup(connection);
+        return {
+          ok: true,
+          coreVersion: 2,
+          retention,
+          metrics: { serverElapsedMs: Date.now() - startedAt },
+        };
+      }
+      if (!openId) throw new Error('Missing WeChat OpenID.');
       const action = String(event?.action || 'bootstrap');
       const result = action.startsWith('getPersonal') || action === 'getMahjongOpponents' || action === 'getOperationsOverview'
         ? await dispatchProfileAction(connection, openId, event)

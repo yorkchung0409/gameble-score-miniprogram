@@ -64,20 +64,10 @@ Page({
       users: {
         total: formatCount(overview.users?.total),
         newIn24Hours: formatCount(overview.users?.newIn24Hours),
-        activeIn5Minutes: formatCount(overview.users?.activeIn5Minutes),
       },
       rooms: {
         activeMahjongIn30Minutes: formatCount(overview.rooms?.activeMahjongIn30Minutes),
         activePokerIn30Minutes: formatCount(overview.rooms?.activePokerIn30Minutes),
-      },
-      transactions: {
-        inLastHour: formatCount(overview.transactions?.inLastHour),
-        inLast24Hours: formatCount(overview.transactions?.inLast24Hours),
-        reversalsInLast24Hours: formatCount(overview.transactions?.reversalsInLast24Hours),
-      },
-      realtime: {
-        mode: overview.realtime?.mode === 'cloud_database_watch' ? '云数据库监听' : '云函数刷新',
-        refreshFallbackSeconds: formatCount(overview.realtime?.refreshFallbackSeconds || 15),
       },
     });
   },

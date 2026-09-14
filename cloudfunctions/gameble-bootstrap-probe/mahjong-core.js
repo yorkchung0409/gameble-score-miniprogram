@@ -189,7 +189,8 @@ async function inTransaction(connection, work) {
 
 async function findUserByOpenId(connection, openId, lock = false) {
   const [rows] = await connection.execute(
-    `SELECT u.id, u.name, u.device_id AS deviceId, u.created_at AS createdAt
+    `SELECT u.id, u.name, u.device_id AS deviceId, u.created_at AS createdAt,
+            u.nickname_changed_at AS nicknameChangedAt
        FROM user_identities AS identity_row
        INNER JOIN users AS u ON u.id = identity_row.user_id
       WHERE identity_row.provider = 'wechat_mini'
@@ -201,7 +202,12 @@ async function findUserByOpenId(connection, openId, lock = false) {
 }
 
 function toUser(row) {
-  return { id: row.id, name: row.name, createdAt: asIso(row.createdAt) };
+  return {
+    id: row.id,
+    name: row.name,
+    createdAt: asIso(row.createdAt),
+    nicknameChangedAt: asIso(row.nicknameChangedAt),
+  };
 }
 
 function toRoom(row, rule) {
@@ -221,44 +227,48 @@ async function authenticate(connection, openId) {
   const existing = await findUserByOpenId(connection, openId);
   if (existing) return { user: toUser(existing), isNewUser: false };
 
-  try {
-    return await inTransaction(connection, async () => {
-      const concurrent = await findUserByOpenId(connection, openId, true);
-      if (concurrent) return { user: toUser(concurrent), isNewUser: false };
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      return await inTransaction(connection, async () => {
+        const concurrent = await findUserByOpenId(connection, openId, true);
+        if (concurrent) return { user: toUser(concurrent), isNewUser: false };
 
-      const deviceId = `wx:${openId}`;
-      const [deviceRows] = await connection.execute(
-        'SELECT id, name, device_id AS deviceId, created_at AS createdAt FROM users WHERE device_id = ? LIMIT 1 FOR UPDATE',
-        [deviceId],
-      );
-      let user = deviceRows[0];
-      const isNewUser = !user;
-      if (!user) {
-        const id = randomUUID();
-        const defaultName = await generateDefaultUserName(connection);
+        const deviceId = `wx:${openId}`;
+        const [deviceRows] = await connection.execute(
+          'SELECT id, name, device_id AS deviceId, created_at AS createdAt, nickname_changed_at AS nicknameChangedAt FROM users WHERE device_id = ? LIMIT 1 FOR UPDATE',
+          [deviceId],
+        );
+        let user = deviceRows[0];
+        const isNewUser = !user;
+        if (!user) {
+          const id = randomUUID();
+          const defaultName = await generateDefaultUserName(connection);
+          await connection.execute(
+            'INSERT INTO users (id, name, device_id) VALUES (?, ?, ?)',
+            [id, defaultName, deviceId],
+          );
+          const [createdRows] = await connection.execute(
+            'SELECT id, name, device_id AS deviceId, created_at AS createdAt, nickname_changed_at AS nicknameChangedAt FROM users WHERE id = ? LIMIT 1',
+            [id],
+          );
+          user = createdRows[0];
+        }
         await connection.execute(
-          'INSERT INTO users (id, name, device_id) VALUES (?, ?, ?)',
-          [id, defaultName, deviceId],
+          'INSERT INTO user_identities (id, user_id, provider, provider_subject) VALUES (?, ?, ?, ?)',
+          [randomUUID(), user.id, 'wechat_mini', openId],
         );
-        const [createdRows] = await connection.execute(
-          'SELECT id, name, device_id AS deviceId, created_at AS createdAt FROM users WHERE id = ? LIMIT 1',
-          [id],
-        );
-        user = createdRows[0];
+        return { user: toUser(user), isNewUser };
+      });
+    } catch (error) {
+      if (isDuplicate(error)) {
+        const concurrent = await findUserByOpenId(connection, openId);
+        if (concurrent) return { user: toUser(concurrent), isNewUser: false };
+        if (/users_name_key|name/i.test(String(error.message || ''))) continue;
       }
-      await connection.execute(
-        'INSERT INTO user_identities (id, user_id, provider, provider_subject) VALUES (?, ?, ?, ?)',
-        [randomUUID(), user.id, 'wechat_mini', openId],
-      );
-      return { user: toUser(user), isNewUser };
-    });
-  } catch (error) {
-    if (isDuplicate(error)) {
-      const concurrent = await findUserByOpenId(connection, openId);
-      if (concurrent) return { user: toUser(concurrent), isNewUser: false };
+      throw error;
     }
-    throw error;
   }
+  throw new CoreError('暂时无法生成可用的默认昵称，请重试', 'CONFLICT');
 }
 
 async function requireUser(connection, openId) {
@@ -272,12 +282,16 @@ async function updateMahjongUserProfile(connection, openId, input) {
   const [existing] = await connection.execute('SELECT id FROM users WHERE name = ? AND id <> ? LIMIT 1', [name, user.id]);
   if (existing[0]) throw new CoreError('昵称已被使用，请换一个', 'CONFLICT');
   try {
-    await connection.execute('UPDATE users SET name = ? WHERE id = ?', [name, user.id]);
+    const [result] = await connection.execute(
+      'UPDATE users SET name = ?, nickname_changed_at = CURRENT_TIMESTAMP(6) WHERE id = ? AND nickname_changed_at IS NULL',
+      [name, user.id],
+    );
+    if (Number(result.affectedRows || 0) === 0) throw new CoreError('昵称只能修改一次', 'CONFLICT');
   } catch (error) {
     if (isDuplicate(error)) throw new CoreError('昵称已被使用，请换一个', 'CONFLICT');
     throw error;
   }
-  return { user: { ...user, name } };
+  return { user: { ...user, name, nicknameChangedAt: new Date().toISOString() } };
 }
 
 async function getRoomRow(connection, roomCode, lock = false) {

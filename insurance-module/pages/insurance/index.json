@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "保险计算",
+  "enablePullDownRefresh": false,
+  "usingComponents": {
+    "card-picker": "/insurance-module/components/card-picker/index"
+  }
+}

@@ -6,7 +6,8 @@
     "pages/opponents/opponents",
     "pages/history/history",
     "pages/poker/poker",
-    "pages/room/room"
+    "pages/room/room",
+    "insurance-module/pages/insurance/index"
   ],
   "window": {
     "navigationBarTitleText": "牌局记账",

@@ -29,6 +29,7 @@
 .action-button { height: 96rpx; min-height: 96rpx; margin: 0 0 16rpx; border-radius: 10rpx; font-size: 32rpx; font-weight: 700; line-height: 96rpx; }
 .mahjong-button { background: #347258; color: #FFFFFF; }
 .poker-button { background: #80656D; color: #FFFFFF; }
+.insurance-button { background: #8F631E; color: #FFFFFF; }
 .secondary-action { border: 1rpx solid #DACAC0; background: #FFFFFF; color: #2F2925; }
 .sheet-mask { position: fixed; z-index: 1000; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; padding: 48rpx; box-sizing: border-box; background: rgba(41, 50, 53, 0.28); }
 .action-sheet { width: 100%; max-width: 640rpx; box-sizing: border-box; padding: 36rpx 30rpx; border-radius: 12rpx; background: #FFFFFF; }

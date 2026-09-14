@@ -159,8 +159,9 @@ test('operations entry is conditional on server-authorized dashboard access', ()
   const operationsWxml = fs.readFileSync(path.resolve(__dirname, '..', 'pages/operations/operations.wxml'), 'utf8');
   assert.match(profileWxml, /wx:if="\{\{canAccessOperations\}\}"[\s\S]*?bindtap="openOperations"/);
   assert.match(profileJs, /openOperations\(\)[\s\S]*?pages\/operations\/operations/);
-  assert.match(operationsWxml, /5 分钟操作/);
-  assert.match(operationsWxml, /云托管不参与日常同步/);
+  assert.doesNotMatch(operationsWxml, /5 分钟操作/);
+  assert.doesNotMatch(operationsWxml, /<text class="section-title">转账<\/text>/);
+  assert.doesNotMatch(operationsWxml, /<text class="section-title">实时同步<\/text>/);
 });
 
 test('home recent activity uses one aggregated Cloud Function request', async () => {

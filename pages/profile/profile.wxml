@@ -37,7 +37,7 @@
   <view class="tea-row"><text>茶费支出</text><text>{{summary.teaFeeDisplay}}</text></view>
 
   <view wx:if="{{canAccessOperations}}" class="operations-entry" bindtap="openOperations">
-    <view><text class="operations-title">运营监控</text><text class="operations-note">用户、房间与实时连接</text></view>
+    <view><text class="operations-title">运营监控</text><text class="operations-note">用户与房间概览</text></view>
     <text class="operations-arrow">›</text>
   </view>
 
