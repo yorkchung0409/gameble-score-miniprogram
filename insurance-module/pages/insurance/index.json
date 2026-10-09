@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "保险计算",
+  "navigationBarBackgroundColor": "#FAF9F6",
+  "navigationBarTextStyle": "black",
   "enablePullDownRefresh": false,
   "usingComponents": {
     "card-picker": "/insurance-module/components/card-picker/index"

@@ -19,7 +19,7 @@ test('every configured page has a complete mini-program file set', () => {
 });
 
 test('all local assets referenced by WXML exist', () => {
-  const queue = [path.join(root, 'pages'), path.join(root, 'custom-tab-bar')];
+  const queue = [path.join(root, 'pages'), path.join(root, 'custom-tab-bar'), path.join(root, 'bookkeeping-module')];
   const wxmlFiles = [];
   while (queue.length) {
     const current = queue.pop();
@@ -38,7 +38,7 @@ test('all local assets referenced by WXML exist', () => {
 });
 
 test('all WXML event handlers exist on their page or component', () => {
-  const queue = [path.join(root, 'pages'), path.join(root, 'custom-tab-bar')];
+  const queue = [path.join(root, 'pages'), path.join(root, 'custom-tab-bar'), path.join(root, 'bookkeeping-module')];
   while (queue.length) {
     const current = queue.pop();
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {

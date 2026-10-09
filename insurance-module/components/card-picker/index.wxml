@@ -8,13 +8,13 @@
   </view>
 </view>
 
-<view wx:if="{{open}}" class="card-modal-mask" catchtap="onMaskTap">
+<view wx:if="{{open}}" class="card-modal-mask" catchtap="onMaskTap" catchtouchmove="stopPropagation">
   <view class="card-modal" catchtap="stopPropagation">
     <view class="card-modal-header">
       <view><text class="card-modal-title">{{title}}</text><text class="card-modal-count">已选 {{draftValues.length}} / {{max}}</text></view>
       <button class="card-modal-close" bindtap="closePicker">×</button>
     </view>
-    <scroll-view class="card-grid-scroll" scroll-y>
+    <scroll-view class="card-grid-scroll" scroll-y catchtouchmove="stopPropagation">
       <view class="card-grid">
         <view wx:for="{{cardOptions}}" wx:key="value" class="option-card {{item.suitClass}} {{item.selected ? 'option-selected' : ''}} {{item.disabled ? 'option-disabled' : ''}}" data-value="{{item.value}}" bindtap="toggleCard">
           <text class="option-rank">{{item.value[0]}}</text>

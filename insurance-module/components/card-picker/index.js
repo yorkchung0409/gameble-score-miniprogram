@@ -45,7 +45,16 @@ Component({
 
     decorateOptions(options, selectedValues) {
       const selected = new Set(selectedValues);
-      return options.filter((item) => item && item.value).map((item) => {
+      const ranks = "AKQJT98765432";
+      const suits = "shdc";
+      const cardOrder = (value) => {
+        const card = String(value).toUpperCase();
+        const rank = ranks.indexOf(card[0]);
+        const suit = suits.indexOf(card.slice(-1).toLowerCase());
+        return rank < 0 || suit < 0 ? 52 : rank * 4 + suit;
+      };
+      return options.filter((item) => item && item.value)
+        .sort((a, b) => cardOrder(a.value) - cardOrder(b.value)).map((item) => {
         const display = this.formatCard(item.value);
         return {
           ...item,

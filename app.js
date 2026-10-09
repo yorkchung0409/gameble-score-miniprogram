@@ -47,25 +47,11 @@ function functionActionForRequest({ path, method, data }) {
   const { pathname, query } = parseRoute(path);
   const normalizedMethod = String(method || 'GET').toUpperCase();
   const payload = data || {};
-  const pokerMatch = pathname.match(/^\/api\/mini\/poker\/ledgers\/([^/]+)(?:\/(.*))?$/);
+  if (pathname === '/api/mini/bookkeeping' && normalizedMethod === 'GET') return { action: 'getBookkeeping', transport: query.transport, offset: query.offset, version: query.version, ifVersion: query.ifVersion };
+  if (pathname === '/api/mini/bookkeeping' && normalizedMethod === 'PUT') return { ...payload, action: 'saveBookkeeping' };
   const mahjongMatch = pathname.match(/^\/api\/mahjong\/rooms\/([^/]+)(?:\/(.*))?$/);
-  if (pathname === '/api/mini/poker/ledgers' && normalizedMethod === 'POST') return { action: 'createPokerLedger', ...payload };
-  if (pokerMatch) {
-    const roomCode = decodeURIComponent(pokerMatch[1]);
-    const suffix = pokerMatch[2] || '';
-    if (!suffix && normalizedMethod === 'GET') return { action: 'getPokerLedger', roomCode, gameLimit: query.gameLimit, gameOffset: query.gameOffset };
-    if (suffix === 'settings' && normalizedMethod === 'PATCH') return { action: 'updatePokerSettings', roomCode, ...payload };
-    if (suffix === 'players' && normalizedMethod === 'POST') return { action: 'addPokerPlayer', roomCode, ...payload };
-    const playerMatch = suffix.match(/^players\/([^/]+)$/);
-    if (playerMatch && normalizedMethod === 'DELETE') return { action: 'deletePokerPlayer', roomCode, playerId: decodeURIComponent(playerMatch[1]) };
-    if (suffix === 'games' && normalizedMethod === 'POST') return { action: 'createPokerGame', roomCode, ...payload };
-    const gameMatch = suffix.match(/^games\/([^/]+)$/);
-    if (gameMatch && normalizedMethod === 'PUT') return { action: 'updatePokerGame', roomCode, gameId: decodeURIComponent(gameMatch[1]), ...payload };
-    if (gameMatch && normalizedMethod === 'DELETE') return { action: 'deletePokerGame', roomCode, gameId: decodeURIComponent(gameMatch[1]) };
-  }
   if (pathname === '/api/mini/me/dashboard') return { action: 'getPersonalDashboard', historyLimit: query.historyLimit };
   if (pathname === '/api/mini/me/recent') return { action: 'getPersonalRecentActivity' };
-  if (pathname === '/api/mini/me/poker-ledgers') return { action: 'getPersonalPokerLedgers', limit: query.limit, offset: query.offset };
   if (pathname === '/api/mini/me/mahjong-rooms') return { action: 'getPersonalMahjongRooms', limit: query.limit, offset: query.offset, activeOnly: query.activeOnly === 'true' };
   if (pathname === '/api/mini/me/mahjong-opponents') return { action: 'getMahjongOpponents', limit: query.limit, offset: query.offset };
   if (pathname === '/api/mini/operations/overview') return { action: 'getOperationsOverview' };
@@ -260,9 +246,6 @@ App({
       mahjongRooms: Array.isArray(probe.result.recent.mahjongRooms)
         ? probe.result.recent.mahjongRooms
         : [],
-      pokerLedgers: Array.isArray(probe.result.recent.pokerLedgers)
-        ? probe.result.recent.pokerLedgers
-        : [],
     };
   },
 
@@ -361,12 +344,10 @@ App({
       path: `/api/mini/me/dashboard?historyLimit=${historyLimit}`,
       cacheTtl: options.force ? 0 : SHELL_READ_CACHE_TTL_MS,
     });
-    const { summary, poker, mahjong } = result;
+    const { summary, mahjong } = result;
     return {
       summary,
       canAccessOperations: Boolean(result.canAccessOperations),
-      pokerLedgers: poker.ledgers || [],
-      pokerPage: { total: poker.total || 0, hasMore: Boolean(poker.hasMore), nextOffset: poker.nextOffset || 0 },
       mahjongRooms: mahjong.rooms || [],
       mahjongPage: { total: mahjong.total || 0, hasMore: Boolean(mahjong.hasMore), nextOffset: mahjong.nextOffset || 0 },
     };
@@ -378,15 +359,8 @@ App({
       cacheTtl: options.force ? 0 : SHELL_READ_CACHE_TTL_MS,
     });
     return {
-      pokerLedgers: result.poker?.ledgers || [],
       mahjongRooms: result.mahjong?.rooms || [],
     };
-  },
-
-  async getPersonalPokerLedgers(options = {}) {
-    const limit = Number.isInteger(options.limit) ? options.limit : 20;
-    const offset = Number.isInteger(options.offset) ? options.offset : 0;
-    return request({ path: `/api/mini/me/poker-ledgers?limit=${limit}&offset=${offset}` });
   },
 
   async getPersonalMahjongRooms(options = {}) {

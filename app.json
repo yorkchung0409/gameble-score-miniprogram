@@ -5,9 +5,9 @@
     "pages/operations/operations",
     "pages/opponents/opponents",
     "pages/history/history",
-    "pages/poker/poker",
     "pages/room/room",
-    "insurance-module/pages/insurance/index"
+    "insurance-module/pages/insurance/index",
+    "bookkeeping-module/pages/bookkeeping/index"
   ],
   "window": {
     "navigationBarTitleText": "牌局记账",
@@ -19,7 +19,7 @@
   "tabBar": {
     "custom": true,
     "color": "#6D5F56",
-    "selectedColor": "#347258",
+    "selectedColor": "#8F631E",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
     "list": [

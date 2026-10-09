@@ -463,14 +463,15 @@
     const firstUnknownCards = firstRaw === undefined ? 47 : integerAtLeastZero(firstRaw, 0);
     const secondRaw = hasOwn(source, "secondUnknownCards") ? source.secondUnknownCards : (hasOwn(source, "second") ? source.second : undefined);
     const secondUnknownCards = secondRaw === undefined ? Math.max(firstUnknownCards - 1, 0) : integerAtLeastZero(secondRaw, 0);
-    const selectedOdds = (street, outs) => validInsuranceOdds(street.oddsOverride) || oddsForOuts(outs);
+    const selectedOdds = (street, outs) => Number.isFinite(Number(street.odds)) && Number(street.odds) > 0
+      ? Number(street.odds) : validInsuranceOdds(street.oddsOverride) || oddsForOuts(outs);
     const turnOdds = selectedOdds(turn, turnOuts);
     const riverOdds = selectedOdds(river, riverOuts);
-    // Keep the old UI's cap semantics: a single insurance payout cannot
-    // exceed the covered pool.  Invalid or blank amounts normalize to zero.
+    // Premiums and their maximum are rounded up to whole units.
+    // Invalid or blank amounts normalize to zero.
     const cappedBuy = (street, odds) => {
-      const buy = rawBuy(street);
-      const cap = odds > 0 ? coverage / odds : 0;
+      const buy = Math.ceil(rawBuy(street));
+      const cap = odds > 0 ? Math.ceil(coverage / odds) : 0;
       return Math.min(buy, Number.isFinite(cap) ? Math.max(0, cap) : 0);
     };
     const turnBuy = cappedBuy(turn, turnOdds);

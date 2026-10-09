@@ -3,6 +3,8 @@
 const { CoreError, requireUser, amountToCents, centsToAmount, calculateTeaFeeCents, calculateThresholdTeaFeeCents, archiveIdleRoomsForUser } = require('./mahjong-core');
 
 const DEFAULT_LIMIT = 20;
+const { personalHistory } = require('./poker-history');
+const { getBookkeepingSummary } = require('./bookkeeping-core');
 const MAX_LIMIT = 50;
 
 function asIso(value) {
@@ -60,9 +62,9 @@ async function getPokerLedgers(connection, userId, input = {}) {
   const snapshotByRoom = new Map();
   const totalsByPlayer = new Map();
   const [snapshots] = await connection.execute(
-    `SELECT room_id AS roomId, net_profit AS netProfit, game_count AS gameCount FROM poker_ledger_snapshots WHERE room_id IN (${placeholders(roomIds)})`, roomIds,
+    `SELECT room_id AS roomId, net_profit AS netProfit, game_count AS gameCount, aggregates_json AS aggregatesJson FROM poker_ledger_snapshots WHERE room_id IN (${placeholders(roomIds)})`, roomIds,
   );
-  for (const snapshot of snapshots) snapshotByRoom.set(snapshot.roomId, { netCents: amountToCents(snapshot.netProfit), gameCount: Number(snapshot.gameCount || 0) });
+  for (const snapshot of snapshots) snapshotByRoom.set(snapshot.roomId, snapshot);
   if (selfPlayerIds.length) {
     const [rows] = await connection.execute(
       `SELECT gp.player_id AS playerId, gp.net_profit AS netProfit, g.room_id AS roomId, g.created_at AS createdAt
@@ -77,7 +79,7 @@ async function getPokerLedgers(connection, userId, input = {}) {
     }
   }
   const ledgers = owners.map((owner) => {
-    const archived = snapshotByRoom.get(owner.id) || { netCents: 0, gameCount: 0 };
+    const archived = personalHistory(snapshotByRoom.get(owner.id), owner.selfPlayerId);
     const current = owner.selfPlayerId ? (totalsByPlayer.get(owner.selfPlayerId) || { netCents: 0, gameCount: 0 }) : { netCents: 0, gameCount: 0 };
     return {
       room: { id: owner.id, roomCode: owner.roomCode, roomName: owner.roomName, gameType: owner.gameType || 'texas', createdAt: asIso(owner.createdAt), updatedAt: asIso(owner.updatedAt) },
@@ -98,7 +100,7 @@ async function getPokerTotals(connection, userId) {
   const roomIds = owners.map((owner) => owner.roomId);
   const selfPlayerIds = owners.map((owner) => owner.selfPlayerId).filter(Boolean);
   const [snapshots] = await connection.execute(
-    `SELECT room_id AS roomId, net_profit AS netProfit, game_count AS gameCount
+    `SELECT room_id AS roomId, net_profit AS netProfit, game_count AS gameCount, aggregates_json AS aggregatesJson
        FROM poker_ledger_snapshots WHERE room_id IN (${placeholders(roomIds)})`, roomIds,
   );
   const snapshotByRoom = new Map(snapshots.map((row) => [row.roomId, row]));
@@ -117,12 +119,12 @@ async function getPokerTotals(connection, userId) {
     currentByPlayer.set(row.playerId, total);
   }
   return owners.reduce((total, owner) => {
-    const snapshot = snapshotByRoom.get(owner.roomId);
+    const snapshot = personalHistory(snapshotByRoom.get(owner.roomId), owner.selfPlayerId);
     const current = owner.selfPlayerId
       ? currentByPlayer.get(owner.selfPlayerId) || { netCents: 0, gameCount: 0 }
       : { netCents: 0, gameCount: 0 };
     return {
-      netCents: total.netCents + amountToCents(snapshot?.netProfit || 0) + current.netCents,
+      netCents: total.netCents + snapshot.netCents + current.netCents,
       gameCount: total.gameCount + Number(snapshot?.gameCount || 0) + current.gameCount,
       ledgerCount: total.ledgerCount + 1,
       trackedLedgerCount: total.trackedLedgerCount + (owner.selfPlayerId ? 1 : 0),
@@ -186,13 +188,13 @@ async function getMyTransactions(connection, userId) {
 }
 
 async function getSummary(connection, userId) {
-  const [user, pokerTotals, transactions, snapshots, roomRows, opponentSnapshots] = await Promise.all([
+  const [user, transactions, snapshots, roomRows, opponentSnapshots, bookkeeping] = await Promise.all([
     getUser(connection, userId),
-    getPokerTotals(connection, userId),
     getMyTransactions(connection, userId),
     connection.execute('SELECT net_profit AS netProfit, win_total AS winTotal, loss_total AS lossTotal, tea_fee_total AS teaFeeTotal FROM mahjong_user_snapshots WHERE user_id = ? LIMIT 1', [userId]).then(([rows]) => rows[0]),
     connection.execute('SELECT room_id AS roomId FROM mahjong_room_members WHERE user_id = ?', [userId]).then(([rows]) => rows),
     connection.execute('SELECT opponent_user_id AS opponentId FROM mahjong_opponent_snapshots WHERE user_id = ?', [userId]).then(([rows]) => rows),
+    getBookkeepingSummary(connection, userId),
   ]);
   let netCents = amountToCents(snapshots?.netProfit || '0');
   let winCents = amountToCents(snapshots?.winTotal || '0');
@@ -212,13 +214,21 @@ async function getSummary(connection, userId) {
   }
   return {
     user,
-    totalNetProfit: centsToAmount(pokerTotals.netCents + netCents),
-    poker: { netProfit: centsToAmount(pokerTotals.netCents), gameCount: pokerTotals.gameCount, ledgerCount: pokerTotals.ledgerCount, trackedLedgerCount: pokerTotals.trackedLedgerCount },
+    totalNetProfit: centsToAmount(netCents + amountToCents(bookkeeping.netProfit)),
+    bookkeeping,
     mahjong: { netProfit: centsToAmount(netCents), winTotal: centsToAmount(winCents), lossTotal: centsToAmount(lossCents), roomCount: roomRows.length, opponentCount: opponentIds.size, teaFeeTotal: centsToAmount(teaFeeCents) },
   };
 }
 
 async function getMahjongOpponents(connection, userId, input = {}) {
+  const [archivedRooms] = await connection.execute(
+    'SELECT opponent_user_id AS opponentId, room_id AS roomId FROM mahjong_opponent_snapshot_rooms WHERE user_id = ?', [userId],
+  );
+  const archivedRoomIds = new Map();
+  for (const row of archivedRooms) {
+    if (!archivedRoomIds.has(row.opponentId)) archivedRoomIds.set(row.opponentId, new Set());
+    archivedRoomIds.get(row.opponentId).add(row.roomId);
+  }
   const [transactions, snapshotRows] = await Promise.all([
     getMyTransactions(connection, userId),
     connection.execute(
@@ -249,7 +259,7 @@ async function getMahjongOpponents(connection, userId, input = {}) {
     if (net > 0) total.winCents += net;
     if (net < 0) total.lossCents -= net;
     total.transactionCount += 1;
-    total.roomIds.add(row.roomId);
+    if (!archivedRoomIds.get(opponentId)?.has(row.roomId)) total.roomIds.add(row.roomId);
     if (new Date(row.createdAt) > new Date(total.lastPlayedAt)) total.lastPlayedAt = row.createdAt;
     totals.set(opponentId, total);
   }
@@ -272,27 +282,25 @@ function isAdmin(openId) {
 
 async function getOperationsOverview(connection, openId) {
   if (!isAdmin(openId)) throw new CoreError('无权访问运营数据', 'FORBIDDEN');
-  const [[users], [newUsers], [activeMahjong], [activePoker]] = await Promise.all([
+  const [[users], [newUsers], [activeMahjong]] = await Promise.all([
     connection.execute('SELECT COUNT(*) AS total FROM users'),
     connection.execute('SELECT COUNT(*) AS total FROM users WHERE created_at >= DATE_SUB(NOW(6), INTERVAL 1 DAY)'),
     connection.execute(`SELECT COUNT(DISTINCT r.id) AS total FROM mahjong_rooms AS r LEFT JOIN mahjong_transactions AS t ON t.room_id = r.id WHERE r.dissolved_at IS NULL AND (r.created_at >= DATE_SUB(NOW(6), INTERVAL 30 MINUTE) OR t.created_at >= DATE_SUB(NOW(6), INTERVAL 30 MINUTE))`),
-    connection.execute('SELECT COUNT(DISTINCT room_id) AS total FROM games WHERE created_at >= DATE_SUB(NOW(3), INTERVAL 30 MINUTE)'),
   ]);
-  return { generatedAt: new Date().toISOString(), users: { total: Number(users.total || 0), newIn24Hours: Number(newUsers.total || 0) }, rooms: { activeMahjongIn30Minutes: Number(activeMahjong.total || 0), activePokerIn30Minutes: Number(activePoker.total || 0) } };
+  return { generatedAt: new Date().toISOString(), users: { total: Number(users.total || 0), newIn24Hours: Number(newUsers.total || 0) }, rooms: { activeMahjongIn30Minutes: Number(activeMahjong.total || 0) } };
 }
 
 async function dispatchProfileAction(connection, openId, event) {
   const user = await requireUser(connection, openId);
   if (event.action === 'getPersonalDashboard') {
     const historyLimit = Math.min(Math.max(Number(event.historyLimit) || 1, 1), 20);
-    const [summary, poker, mahjong] = await Promise.all([getSummary(connection, user.id), getPokerLedgers(connection, user.id, { limit: historyLimit }), getMahjongRooms(connection, user.id, { limit: historyLimit })]);
-    return { summary, poker, mahjong, canAccessOperations: isAdmin(openId) };
+    const [summary, mahjong] = await Promise.all([getSummary(connection, user.id), getMahjongRooms(connection, user.id, { limit: historyLimit })]);
+    return { summary, mahjong, canAccessOperations: isAdmin(openId) };
   }
   if (event.action === 'getPersonalRecentActivity') {
-    const [poker, mahjong] = await Promise.all([getPokerLedgers(connection, user.id, { limit: 1 }), getMahjongRooms(connection, user.id, { limit: 1 })]);
-    return { poker, mahjong };
+    const mahjong = await getMahjongRooms(connection, user.id, { limit: 1 });
+    return { mahjong };
   }
-  if (event.action === 'getPersonalPokerLedgers') return getPokerLedgers(connection, user.id, event);
   if (event.action === 'getPersonalMahjongRooms') return getMahjongRooms(connection, user.id, event);
   if (event.action === 'getMahjongOpponents') return getMahjongOpponents(connection, user.id, event);
   if (event.action === 'getOperationsOverview') return getOperationsOverview(connection, openId);

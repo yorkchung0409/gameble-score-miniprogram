@@ -1,0 +1,135 @@
+<page-meta page-style="{{activeFilter || editorVisible || importPreview ? 'overflow: hidden;' : ''}}" />
+<view wx:if="{{activeFilter}}" class="filter-backdrop" catchtap="closeFilter" catchtouchmove="preventMove"></view>
+<view class="page">
+  <view class="heading"><view><text class="title">个人扑克记账</text><text class="subtitle">记下每一场，回看自己的成绩</text></view></view>
+  <view class="privacy-note">仅本人可见 · 同一微信跨设备同步 · 积分记录</view>
+  <view wx:if="{{loading}}" class="empty">正在读取云端记录…</view>
+  <view wx:if="{{loadError}}" class="error"><text>{{loadError}}</text><button bindtap="loadRecords">重新加载</button></view>
+  <block wx:if="{{!loading}}">
+    <view class="stats-grid">
+      <view class="stat"><text class="stat-label">场次</text><text class="stat-value">{{summary.games}}</text></view>
+      <view class="stat"><text class="stat-label">时长</text><text class="stat-value">{{summary.hours}}h</text></view>
+      <view class="stat"><text class="stat-label">盈亏</text><text class="stat-value {{summary.profitClass}}">{{summary.profit}}</text></view>
+      <view class="stat"><text class="stat-label">每小时盈亏</text><text class="stat-value">{{summary.hourly}}</text></view>
+      <view class="stat"><text class="stat-label">盈利场次占比</text><text class="stat-value">{{summary.winRate}}%</text></view>
+      <view class="stat"><text class="stat-label">场均盈亏</text><text class="stat-value">{{summary.average}}</text></view>
+    </view>
+    <button class="primary-button" bindtap="openEditor" disabled="{{saving || importBusy || loadError}}">＋ 记一笔</button>
+    <view class="quick-filters"><text class="quick-filter-label">时间</text><button class="quick-filter {{quickFilter === 'month' ? 'selected' : ''}}" data-range="month" bindtap="applyQuickFilter">本月</button><button class="quick-filter {{quickFilter === 'year' ? 'selected' : ''}}" data-range="year" bindtap="applyQuickFilter">今年</button><button class="quick-filter {{quickFilter === 'all' ? 'selected' : ''}}" data-range="all" bindtap="applyQuickFilter">全部</button></view>
+    <view class="filters {{activeFilter ? 'filters-open' : ''}}">
+      <view wx:for="{{filterItems}}" wx:key="key" wx:for-item="filter" class="filter-cell {{activeFilter === filter.key ? 'filter-cell-open' : ''}}">
+        <button class="filter-trigger {{filter.filtered || activeFilter === filter.key ? 'filter-trigger-selected' : ''}}" data-key="{{filter.key}}" catchtap="toggleFilter" aria-label="{{filter.label}}，点击选择" hover-class="filter-trigger-pressed">
+          <text class="filter-label">{{filter.label}}</text><view class="filter-chevron {{activeFilter === filter.key ? 'filter-chevron-open' : ''}}"></view>
+        </button>
+        <scroll-view wx:if="{{activeFilter === filter.key}}" class="filter-menu" style="height: {{(filter.options.length > 5 ? 5 : filter.options.length) * 60 + 2}}rpx;" scroll-y enhanced show-scrollbar="{{true}}" catchtouchmove="preventMove">
+          <button wx:for="{{filter.options}}" wx:key="*this" wx:for-item="option" class="filter-option {{filter.selected === option ? 'filter-option-selected' : ''}}" data-key="{{filter.key}}" data-value="{{option}}" catchtap="selectFilterOption" hover-class="filter-trigger-pressed"><text>{{option}}</text><text wx:if="{{filter.selected === option}}" class="filter-check">✓</text></button>
+        </scroll-view>
+      </view>
+    </view>
+    <view class="filter-note"><text>{{filtered ? '统计与图表仅展示筛选结果' : '统计与图表展示全部记录'}}</text><text wx:if="{{filtered}}" class="link" bindtap="resetFilters">重置筛选</text></view>
+    <view class="section">
+      <view class="section-head"><text class="section-title">记录明细</text><text class="note">{{recordCount}} 条 · 点击编辑</text></view>
+      <view wx:for="{{visibleRecords}}" wx:key="id" class="record" data-id="{{item.id}}" bindtap="openRecord">
+        <view class="record-main"><text class="record-date">{{item.date}} · {{item.tagDisplay || '未分类'}}</text><text class="note">{{item.durationDisplay}}{{item.blind ? ' · 盲注 ' + item.blind : ''}}{{item.note ? ' · ' + item.note : ''}}</text></view><text class="record-profit {{item.profitClass}}">{{item.profitDisplay}}</text>
+      </view>
+      <view wx:if="{{!recordCount}}" class="empty">{{filtered ? '没有符合筛选的记录' : '暂无记录，点击“记一笔”开始'}}</view>
+      <view wx:if="{{hasMore}}" class="record-load-actions"><button class="more" bindtap="loadMore">更多 5 条</button><button class="more" bindtap="loadAllRecords">加载全部</button></view>
+    </view>
+    <view class="section">
+      <view class="section-head"><text class="section-title">输赢排行</text><text class="note">各前 5 场</text></view>
+      <text class="ranking-title positive">赢最多</text>
+      <view wx:for="{{winRankings}}" wx:key="id" class="ranking"><text>{{index + 1}}</text><text class="ranking-date">{{item.date}} · {{item.tag || '未分类'}}</text><text class="positive">{{item.profitDisplay}}</text></view>
+      <view wx:if="{{!winRankings.length}}" class="empty compact">暂无盈利记录</view>
+      <text class="ranking-title negative">输最多</text>
+      <view wx:for="{{lossRankings}}" wx:key="id" class="ranking"><text>{{index + 1}}</text><text class="ranking-date">{{item.date}} · {{item.tag || '未分类'}}</text><text class="negative">{{item.profitDisplay}}</text></view>
+      <view wx:if="{{!lossRankings.length}}" class="empty compact">暂无亏损记录</view>
+    </view>
+    <view class="section">
+      <view class="section-head"><text class="section-title">绩效汇总</text><text class="note">最多展示 30 项</text></view>
+      <view class="switch"><button class="{{performanceMode === 'blind' ? 'selected' : ''}}" data-mode="blind" bindtap="changePerformance">按盲注</button><button class="{{performanceMode === 'tag' ? 'selected' : ''}}" data-mode="tag" bindtap="changePerformance">按标签</button></view>
+      <text wx:if="{{performanceMode === 'tag'}}" class="note">多标签记录分别计入各标签，分组数字不能相加作为总盈亏。</text>
+      <view wx:for="{{performanceRows}}" wx:key="label" class="bar-row"><text class="bar-label">{{item.label}}</text><view class="bar"><view class="bar-fill {{item.profitClass}}" style="width: {{item.width}}%;"></view></view><text class="{{item.profitClass}}">{{item.profit}}</text></view>
+      <view wx:if="{{!performanceRows.length}}" class="empty">暂无数据</view>
+    </view>
+    <view class="section">
+      <view class="section-head"><text class="section-title">牌局走势</text><text class="note">最近 {{trendLimit}} 场</text></view>
+      <view class="switch"><button class="{{trendMode === 'cumulative' ? 'selected' : ''}}" data-mode="cumulative" bindtap="changeTrend">累计走势</button><button class="{{trendMode === 'group' ? 'selected' : ''}}" data-mode="group" bindtap="changeTrend">单场对比</button></view>
+      <view class="trend-limit-switch"><text class="trend-limit-label">显示场次</text><button wx:for="{{trendLimitOptions}}" wx:key="*this" class="trend-limit-button {{trendLimit === item ? 'selected' : ''}}" data-limit="{{item}}" bindtap="changeTrendLimit">最近 {{item}}</button></view>
+      <text class="note trend-hint">零线上方盈利，下方亏损 · 点击折线查看详情</text>
+      <view wx:if="{{trendPoints.length}}" class="trend-chart">
+        <view class="trend-chart-plot" bindtap="selectTrendPoint">
+          <view class="trend-zero-line" style="top: {{trendZeroTop}}%;"><text class="trend-zero-label">0</text></view>
+          <view wx:for="{{trendSegments}}" wx:key="key" class="trend-line {{item.profitClass}}" style="left: {{item.left}}%; top: {{item.top}}%; width: {{item.width}}%; transform: rotate({{item.angle}}deg);"></view>
+          <view wx:for="{{trendDisplayPoints}}" wx:key="id" class="trend-point {{item.profitClass}}" data-index="{{item.index}}" catchtap="selectTrendPoint" style="left: {{item.left}}%; top: {{item.top}}%;"><view class="trend-point-dot"></view></view>
+          <view wx:if="{{trendSelection}}" class="trend-selection-line" style="left: {{trendSelection.left}}%;"></view>
+          <view wx:if="{{trendSelection}}" class="trend-selected-point {{trendSelection.profitClass}}" data-index="{{trendSelection.index}}" catchtap="selectTrendPoint" style="left: {{trendSelection.left}}%; top: {{trendSelection.top}}%;"></view>
+        </view>
+        <view class="trend-axis"><text wx:for="{{trendAxisLabels}}" wx:key="id" class="trend-date trend-date-{{item.alignment}}" style="left: {{item.left}}%;">{{item.label}}</text></view>
+        <view wx:if="{{trendSelection}}" class="trend-detail">
+          <view class="trend-detail-heading"><text>{{trendSelection.date}}</text><text class="trend-detail-position">第 {{trendSelection.index + 1}} / {{trendPoints.length}} 场</text></view>
+          <view class="trend-detail-values"><view><text class="trend-detail-label">单场盈亏</text><text class="trend-detail-value {{trendSelection.singleProfitClass}}">{{trendSelection.singleProfit}}</text></view><view><text class="trend-detail-label">筛选内累计</text><text class="trend-detail-value {{trendSelection.cumulativeProfitClass}}">{{trendSelection.cumulativeProfit}}</text></view></view>
+        </view>
+      </view>
+      <view wx:else class="empty">暂无数据</view>
+    </view>
+    <view class="section">
+      <view class="section-head"><text class="section-title">数据管理</text></view>
+      <text class="note">支持网页导出的 JSON 备份：先发到微信聊天，再点“导入 JSON”选择文件。预览后合并，重复跳过，冲突保留现有记录。CSV 为追加导入；Excel 请另存为 UTF-8 CSV。</text>
+      <view class="data-actions"><button bindtap="exportBackup" loading="{{exporting}}" disabled="{{saving || importBusy || exporting || loadError}}">导出备份</button><button bindtap="importBackup" disabled="{{saving || importBusy || exporting || loadError}}">导入 JSON</button><button bindtap="importCsv" loading="{{importBusy}}" disabled="{{saving || importBusy || exporting || loadError}}">导入 CSV</button><button class="danger" bindtap="clearRecords" disabled="{{saving || importBusy || exporting || loadError}}">清空我的记录</button></view>
+    </view>
+  </block>
+  <view wx:if="{{editorVisible}}" class="mask" catchtouchmove="preventMove">
+    <scroll-view class="sheet" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="sheet-inner"><view class="section-head"><text class="section-title">{{editingId ? '编辑记录' : '记一笔'}}</text><button class="close" bindtap="closeEditor" disabled="{{saving}}">×</button></view>
+        <view class="field"><text>日期</text><button class="input date-trigger" bindtap="toggleCalendar" disabled="{{saving}}"><text>{{form.date}}</text><view class="filter-chevron {{calendarVisible ? 'filter-chevron-open' : ''}}"></view></button>
+          <view wx:if="{{calendarVisible}}" class="calendar">
+            <view class="calendar-nav"><button data-step="-12" bindtap="moveCalendar" disabled="{{saving}}" aria-label="上一年">«</button><button data-step="-1" bindtap="moveCalendar" disabled="{{saving}}" aria-label="上个月">‹</button><text>{{calendarMonth}}</text><button data-step="1" bindtap="moveCalendar" disabled="{{saving}}" aria-label="下个月">›</button><button data-step="12" bindtap="moveCalendar" disabled="{{saving}}" aria-label="下一年">»</button></view>
+            <view class="calendar-grid"><text wx:for="{{weekdays}}" wx:key="*this" class="calendar-weekday">{{item}}</text><button wx:for="{{calendarDays}}" wx:key="key" class="calendar-day {{item.selected ? 'choice-selected' : ''}}" data-date="{{item.date}}" bindtap="selectCalendarDay" disabled="{{!item.date || saving}}">{{item.label}}</button></view>
+            <button class="calendar-today" bindtap="selectToday" disabled="{{saving}}">回到今天</button>
+          </view>
+        </view>
+        <view class="field"><text>时长（小时，可选）</text><button class="input number-trigger {{form.hours === '' ? 'number-placeholder' : ''}}" data-field="hours" bindtap="openNumberPad" disabled="{{saving}}">{{form.hours === '' ? '例如 3.5，未知可留空' : form.hours}}</button></view>
+        <view class="field"><text>本场盈亏（积分）</text><view class="switch"><button class="{{direction === 'win' ? 'selected' : ''}}" data-direction="win" bindtap="changeDirection" disabled="{{saving}}">赢</button><button class="{{direction === 'loss' ? 'selected' : ''}}" data-direction="loss" bindtap="changeDirection" disabled="{{saving}}">输</button></view><button class="input number-trigger {{form.profit === '' ? 'number-placeholder' : ''}}" data-field="profit" bindtap="openNumberPad" disabled="{{saving}}">{{form.profit === '' ? '填写积分，平局填 0' : form.profit}}</button></view>
+        <view class="field"><view class="choice-heading"><text>盲注（可选，单选）</text><button data-kind="blind" bindtap="openChoiceManager" disabled="{{saving}}">管理</button></view><view class="choice-grid"><button wx:for="{{blindChoices}}" wx:key="value" class="choice-chip {{item.selected ? 'choice-selected' : ''}}" data-kind="blind" data-value="{{item.value}}" bindtap="selectEditorChoice" disabled="{{saving}}">{{item.value}}</button></view><text wx:if="{{!blindChoices.length}}" class="note">暂无盲注，点击管理添加</text></view>
+        <view class="field"><view class="choice-heading"><text>标签（可选，多选）</text><button data-kind="tag" bindtap="openChoiceManager" disabled="{{saving}}">管理</button></view><view class="choice-grid"><button wx:for="{{tagChoices}}" wx:key="value" class="choice-chip {{item.selected ? 'choice-selected' : ''}}" data-kind="tag" data-value="{{item.value}}" bindtap="selectEditorChoice" disabled="{{saving}}">{{item.value}}</button></view><text wx:if="{{!tagChoices.length}}" class="note">暂无标签，点击管理添加</text></view>
+        <view class="field"><text>备注（可选）</text><input class="input" value="{{form.note}}" data-key="note" bindinput="inputField" placeholder="记下这场的感受" maxlength="200" disabled="{{saving}}" /></view>
+        <view class="sheet-actions"><button wx:if="{{editingId}}" class="danger" bindtap="deleteRecord" disabled="{{saving || loadError}}">删除</button><button class="ghost" bindtap="closeEditor" disabled="{{saving}}">取消</button><button class="primary-button" bindtap="saveRecord" loading="{{saving}}" disabled="{{saving || loadError}}">保存</button></view>
+      </view>
+    </scroll-view>
+  </view>
+  <view wx:if="{{numberField}}" class="mask number-mask" catchtouchmove="preventMove">
+    <view class="number-panel">
+      <view class="section-head"><text class="section-title">{{numberField === 'profit' ? '本场盈亏（积分）' : '时长（小时）'}}</text><button class="close" bindtap="closeNumberPad" aria-label="取消数字输入">×</button></view>
+      <view class="number-display"><text class="{{numberDraft === '' ? 'number-placeholder' : ''}}">{{numberDraft === '' ? '未填写' : numberDraft}}</text><view class="number-caret"></view></view>
+      <text wx:if="{{numberError}}" class="negative number-error">{{numberError}}</text>
+      <view class="number-keyboard"><button wx:for="{{numberKeys}}" wx:key="*this" class="number-key" data-key="{{item}}" bindtap="pressNumberKey" hover-class="number-key-pressed">{{item}}</button></view>
+      <view class="number-actions"><button data-key="清空" bindtap="pressNumberKey">清空</button><button bindtap="closeNumberPad">取消</button><button class="number-done" bindtap="confirmNumberPad">完成</button></view>
+    </view>
+  </view>
+  <view wx:if="{{choiceManager}}" class="mask manager-mask" catchtouchmove="preventMove">
+    <view class="manager-panel">
+      <view class="section-head"><text class="section-title">{{choiceManager === 'blind' ? '管理盲注级别' : '管理标签'}}</text><button class="close" bindtap="closeChoiceManager">×</button></view>
+      <view class="option-add"><input class="input" value="{{choiceManager === 'blind' ? newBlind : newTag}}" data-kind="{{choiceManager}}" bindinput="inputNewOption" placeholder="{{choiceManager === 'blind' ? '例如 1/2、0.5/1' : '输入新标签'}}" maxlength="30" /><button data-kind="{{choiceManager}}" bindtap="addEditorChoice">添加</button></view>
+      <scroll-view class="manager-list" scroll-y enhanced><view wx:for="{{managerChoices}}" wx:key="value" class="manager-row"><text class="manager-name">{{item.value}}</text><text wx:if="{{item.used}}" class="note">使用中</text><button class="manager-delete" data-value="{{item.value}}" bindtap="removeEditorChoice" aria-label="删除{{item.value}}">×</button></view><view wx:if="{{!managerChoices.length}}" class="empty compact">暂无选项，请在上方添加</view></scroll-view>
+      <text class="note">修改随本次记录保存到云端；取消记账不保存。使用中的选项不能删除。</text>
+      <button class="primary-button manager-done" bindtap="closeChoiceManager">完成</button>
+    </view>
+  </view>
+  <view wx:if="{{importPreview}}" class="mask" catchtouchmove="preventMove">
+    <scroll-view class="sheet" scroll-y enhanced show-scrollbar="{{false}}"><view class="sheet-inner">
+      <view class="section-head"><text class="section-title">导入预览</text><button class="close" bindtap="cancelImport" disabled="{{saving}}">×</button></view>
+      <text class="preview-line">文件 {{importPreview.imported}} 条：新增 {{importPreview.added}}，重复 {{importPreview.duplicates}}，冲突 {{importPreview.conflictCount}}。</text>
+      <text class="preview-line">文件盈亏 {{importPreview.incomingStats.profit}} · {{importPreview.incomingStats.hours}} 小时</text>
+      <text class="preview-line">合并后 {{importPreview.nextStats.games}} 场 · 盈亏 {{importPreview.nextStats.profit}}</text>
+      <text class="note">不会清空现有记录。同编号内容不一致时保留小程序中的记录，不导入冲突项。</text>
+      <text wx:if="{{importPreview.csv}}" class="negative preview-line">CSV 没有稳定编号，重复导入仍会新增，请勿重复选择同一文件。</text>
+      <view wx:for="{{importPreview.conflicts}}" wx:key="id" class="conflict-row">
+        <text class="preview-line">冲突记录 {{item.id}}</text>
+        <text class="note">现有：{{item.existing.date}} · {{item.existing.profitDisplay}} · {{item.existing.durationDisplay}} · {{item.existing.blind}} · {{item.existing.tagDisplay}} · {{item.existing.note}}</text>
+        <text class="note">文件：{{item.incoming.date}} · {{item.incoming.profitDisplay}} · {{item.incoming.durationDisplay}} · {{item.incoming.blind}} · {{item.incoming.tagDisplay}} · {{item.incoming.note}}</text>
+      </view>
+      <view wx:if="{{importPreview.conflictCount}}" class="sheet-actions"><button data-step="-1" bindtap="changeConflictPage" disabled="{{importPreview.conflictPage <= 1}}">上一页</button><text>{{importPreview.conflictPage}} / {{importPreview.conflictPages}}</text><button data-step="1" bindtap="changeConflictPage" disabled="{{importPreview.conflictPage >= importPreview.conflictPages}}">下一页</button></view>
+      <view class="sheet-actions"><button class="ghost" bindtap="cancelImport" disabled="{{saving}}">取消</button><button class="primary-button" bindtap="confirmImport" loading="{{saving}}" disabled="{{saving || loadError}}">确认合并</button></view>
+    </view></scroll-view>
+  </view>
+</view>

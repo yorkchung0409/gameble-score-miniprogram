@@ -1,10 +1,25 @@
+<page-meta page-style="{{outsDetail ? 'overflow: hidden;' : ''}}" />
 <view wx:if="{{view}}" class="page">
   <view class="page-header">
     <view>
       <view class="page-title">保险计算</view>
       <view class="page-subtitle">转牌、河牌保险与牌局结算</view>
     </view>
-    <text class="header-status">本地计算</text>
+    <view class="header-actions"><text class="header-status">本地计算</text><button class="odds-config-button" bindtap="openOddsConfig">赔率配置</button></view>
+  </view>
+
+  <view wx:if="{{oddsConfigVisible}}" class="odds-config-modal">
+    <view class="odds-config-mask" catchtap="closeOddsConfig"></view>
+    <view class="odds-config-panel">
+      <view class="odds-config-head"><text>赔率配置</text><text class="odds-config-close" bindtap="closeOddsConfig">×</text></view>
+      <view class="odds-config-help">新增配置：将“配置名称”改为新名称，调整 1–17 张 outs 的赔率后，点击“保存并应用”。使用已有名称保存会更新该配置；保存后立即应用到两街保险。</view>
+      <view class="odds-profile-title">已有配置</view>
+      <view class="odds-profile-list"><button wx:for="{{oddsProfiles}}" wx:key="name" class="odds-profile-button {{item.name === selectedOddsProfile ? 'odds-profile-active' : ''}}" data-index="{{index}}" bindtap="onOddsProfileTap">{{item.name}}</button></view>
+      <view class="odds-config-name-label">配置名称</view>
+      <input class="odds-config-name" value="{{oddsConfigName}}" bindinput="onOddsConfigNameInput" maxlength="20" />
+      <view class="odds-config-grid"><view wx:for="{{oddsConfigRows}}" wx:key="*this" class="odds-config-item"><text>{{item}} 张 outs</text><input type="digit" value="{{oddsConfigDraft[index]}}" data-index="{{index}}" bindinput="onOddsConfigInput" /></view></view>
+      <view class="odds-config-actions"><button class="odds-config-delete" disabled="{{oddsProfiles.length <= 1}}" bindtap="deleteOddsConfig">删除配置</button><button class="odds-config-save" bindtap="saveOddsConfig">保存并应用</button></view>
+    </view>
   </view>
 
   <view class="section insurance-section">
@@ -13,9 +28,9 @@
       <view class="section-note">两街状态独立保存</view>
     </view>
     <button class="action-button poker-button recalc-button" bindtap="onApplyAuto">按当前牌局计算</button>
-    <view class="recalc-note">录入或改动牌局后，点击计算会按真实牌面刷新 outs 和赔率，并将预设买入带入所选玩家的主底池。</view>
+    <view class="recalc-note">录入或改动牌局后，点击计算更新 outs 与赔率；首次计算带入预设买入。</view>
     <view wx:if="{{!isCalculated || !view.pools.length}}" class="insurance-placeholder">
-      <view class="placeholder-note">可拖动或点选档位预览赔率与 outs。预设买入和购买人保存在本机；完成牌局后点击上方计算，会按真实牌面更新。</view>
+      <view class="placeholder-note">拖动或点选档位预览；预设买入和购买人保存在本机。</view>
       <view class="preview-buyer-row">
         <text class="field-label">预设购买人</text>
         <picker class="preview-buyer-picker" mode="selector" range="{{previewBuyerOptions}}" range-key="label" value="{{previewBuyerIndex}}" bindchange="onPreviewBuyerChange">
@@ -26,24 +41,22 @@
         <view class="street-card street-card-pending">
           <view class="street-card-head"><text class="street-card-name">转牌保险</text><view class="street-odds-summary"><text class="street-odds-number">{{previewTurn.oddsText}}</text><text>预览赔率</text></view></view>
           <view class="street-description">预览档位 · 发出转牌后以真实牌面重新计算</view>
-          <view class="street-outs-row"><text>预览 outs</text><picker class="preview-outs-picker" mode="selector" range="{{view.previewOutsOptions}}" range-key="label" value="{{previewTurn.outsPickerIndex}}" data-street="turn" bindchange="onPreviewOutsSelect"><view class="street-outs-pending preview-outs-control"><text>{{previewTurn.outs}} 张</text><text class="preview-outs-chevron">⌄</text></view></picker></view>
+          <view class="street-outs-row"><text>预览 outs</text><view class="street-outs-value">{{previewTurn.outs}} 张</view></view>
           <view class="odds-scale"><view wx:for="{{view.oddsScale}}" wx:key="index" class="odds-scale-item {{item.index === previewTurn.oddsIndex ? 'odds-scale-selected' : ''}}" data-street="turn" data-odds-index="{{item.index}}" bindtap="onPreviewOddsTap">{{item.label}}</view></view>
           <view class="odds-position-row"><view wx:for="{{view.oddsScale}}" wx:key="index" class="odds-position-item {{item.index === previewTurn.oddsIndex ? 'odds-position-selected' : ''}}"><text>{{item.position}}</text><view class="odds-position-bar"></view></view></view>
-          <slider class="odds-slider" min="1" max="17" value="{{previewTurn.oddsIndex}}" step="1" activeColor="#C69A2E" backgroundColor="#E8DED4" blockColor="#FFFFFF" data-street="turn" bindchanging="onPreviewOddsChange" bindchange="onPreviewOddsChange" />
-          <view class="field-label">转牌保险预览买入</view><view class="money-input"><input type="digit" value="{{previewTurn.buyInput}}" data-street="turn" bindinput="onPreviewBuyInput" /><text>¥</text></view>
-          <view class="max-buy-text">{{previewTurn.maxBuyLabel}}</view>
+          <slider class="odds-slider" block-size="16" min="1" max="17" value="{{previewTurn.oddsIndex}}" step="1" activeColor="#C69A2E" backgroundColor="#E8DED4" blockColor="#FFFFFF" data-street="turn" bindchanging="onPreviewOddsChange" bindchange="onPreviewOddsChange" />
+          <view class="buy-heading"><view class="field-label">转牌保险预览买入</view><view class="max-buy-text">{{previewTurn.maxBuyLabel}}</view></view><view class="money-input"><input type="number" value="{{previewTurn.buyInput}}" data-street="turn" bindinput="onPreviewBuyInput" bindblur="onPreviewBuyCommit" bindconfirm="onPreviewBuyCommit" /><text>¥</text></view>
           <view class="ratio-row"><button wx:for="{{view.buyRatios}}" wx:key="value" class="ratio-button" disabled="{{!previewTurn.hasCoverage}}" data-street="turn" data-ratio="{{item.value}}" bindtap="onPreviewBuyRatioTap">{{item.label}}</button></view>
           <view class="payout-box"><text>转牌爆保险预览可收</text><text>¥{{previewTurn.payoutText}}</text></view>
         </view>
         <view class="street-card street-card-pending">
           <view class="street-card-head"><text class="street-card-name">河牌保险</text><view class="street-odds-summary"><text class="street-odds-number">{{previewRiver.oddsText}}</text><text>预览赔率</text></view></view>
           <view class="street-description">预览档位 · 转牌后以真实牌面重新计算</view>
-          <view class="street-outs-row"><text>预览 outs</text><picker class="preview-outs-picker" mode="selector" range="{{view.previewOutsOptions}}" range-key="label" value="{{previewRiver.outsPickerIndex}}" data-street="river" bindchange="onPreviewOutsSelect"><view class="street-outs-pending preview-outs-control"><text>{{previewRiver.outs}} 张</text><text class="preview-outs-chevron">⌄</text></view></picker></view>
+          <view class="street-outs-row"><text>预览 outs</text><view class="street-outs-value">{{previewRiver.outs}} 张</view></view>
           <view class="odds-scale"><view wx:for="{{view.oddsScale}}" wx:key="index" class="odds-scale-item {{item.index === previewRiver.oddsIndex ? 'odds-scale-selected' : ''}}" data-street="river" data-odds-index="{{item.index}}" bindtap="onPreviewOddsTap">{{item.label}}</view></view>
           <view class="odds-position-row"><view wx:for="{{view.oddsScale}}" wx:key="index" class="odds-position-item {{item.index === previewRiver.oddsIndex ? 'odds-position-selected' : ''}}"><text>{{item.position}}</text><view class="odds-position-bar"></view></view></view>
-          <slider class="odds-slider" min="1" max="17" value="{{previewRiver.oddsIndex}}" step="1" activeColor="#C69A2E" backgroundColor="#E8DED4" blockColor="#FFFFFF" data-street="river" bindchanging="onPreviewOddsChange" bindchange="onPreviewOddsChange" />
-          <view class="field-label">河牌保险预览买入</view><view class="money-input"><input type="digit" value="{{previewRiver.buyInput}}" data-street="river" bindinput="onPreviewBuyInput" /><text>¥</text></view>
-          <view class="max-buy-text">{{previewRiver.maxBuyLabel}}</view>
+          <slider class="odds-slider" block-size="16" min="1" max="17" value="{{previewRiver.oddsIndex}}" step="1" activeColor="#C69A2E" backgroundColor="#E8DED4" blockColor="#FFFFFF" data-street="river" bindchanging="onPreviewOddsChange" bindchange="onPreviewOddsChange" />
+          <view class="buy-heading"><view class="field-label">河牌保险预览买入</view><view class="max-buy-text">{{previewRiver.maxBuyLabel}}</view></view><view class="money-input"><input type="number" value="{{previewRiver.buyInput}}" data-street="river" bindinput="onPreviewBuyInput" bindblur="onPreviewBuyCommit" bindconfirm="onPreviewBuyCommit" /><text>¥</text></view>
           <view class="ratio-row"><button wx:for="{{view.buyRatios}}" wx:key="value" class="ratio-button" disabled="{{!previewRiver.hasCoverage}}" data-street="river" data-ratio="{{item.value}}" bindtap="onPreviewBuyRatioTap">{{item.label}}</button></view>
           <view class="payout-box"><text>河牌爆保险预览可收</text><text>¥{{previewRiver.payoutText}}</text></view>
         </view>
@@ -51,42 +64,41 @@
     </view>
     <view wx:if="{{isCalculated}}">
       <view class="pool-card" wx:for="{{view.pools}}" wx:for-item="pool" wx:key="id">
-        <view class="pool-title"><text>{{pool.label}}</text><text>¥{{pool.amountText}} · {{pool.leadersText}}</text></view>
+        <view class="pool-title pool-heading"><text class="pool-label">{{pool.label}}</text><view class="pool-amount-summary"><text class="pool-amount">¥{{pool.amountText}} · {{pool.leadersText}}</text><text wx:if="{{pool.rakeText}}" class="pool-rake-text">{{pool.rakeText}}</text></view></view>
         <view class="buyer-panel" wx:for="{{pool.buyers}}" wx:for-item="buyer" wx:key="buyer">
-        <view class="pool-title"><text>玩家 {{buyer.buyer}}</text><text>{{buyer.recommended ? '建议购买' : '手动配置'}}</text></view>
+        <view class="pool-title"><text>玩家 {{buyer.buyer}}</text><text>{{buyer.historicalOnly ? '已结算记录' : buyer.recommended ? '建议购买' : '手动配置'}}</text></view>
         <view class="street-row">
-          <view class="street-card">
-            <view class="street-card-head"><view><text class="street-card-name">转牌保险</text><text class="street-status-text">{{buyer.turn.statusLabel}}</text></view><view class="street-odds-summary"><text class="street-odds-number">{{buyer.turn.oddsValueText}}</text><text>{{buyer.turn.oddsModeText}}</text><button class="auto-odds-button {{buyer.turn.oddsOverride ? '' : 'auto-odds-active'}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" data-odds-index="0" bindtap="onOddsQuickSelect">自动</button></view></view>
-            <view class="street-description">当前估算 · 发出转牌后将保存本街买入</view>
-            <view class="street-outs-row"><text>当前 outs</text><input type="number" value="{{buyer.turn.outsInput}}" disabled="{{!buyer.turn.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" data-field="outs" bindinput="onStreetInput" /></view>
-            <slider class="outs-slider" min="0" max="17" value="{{buyer.turn.outs || 0}}" step="1" disabled="{{!buyer.turn.configurable}}" activeColor="#C69A2E" backgroundColor="#E8DED4" blockColor="#FFFFFF" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" bindchange="onOutsSliderChange" />
+          <view wx:if="{{buyer.turn.status !== 'notApplicable'}}" class="street-card">
+            <button wx:if="{{buyer.turn.settled}}" class="settled-street-toggle" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" bindtap="toggleSettledStreet" aria-label="转牌保险已结束，买入{{buyer.turn.settledBuyText}}，{{buyer.turn.settlementSummaryText}}，{{buyer.turn.collapsed ? '展开明细' : '收起明细'}}"><text class="settled-street-title">转牌保险已结束</text><view class="settled-street-summary"><text>买入 ¥{{buyer.turn.settledBuyText}}</text><text>/</text><text class="settled-street-result {{buyer.turn.settlementSummaryClass}}">{{buyer.turn.settlementSummaryText}}</text></view><view class="settled-street-chevron {{buyer.turn.collapsed ? '' : 'settled-street-chevron-open'}}"></view></button>
+            <view wx:if="{{!buyer.turn.collapsed}}" class="street-details">
+            <view class="street-card-head"><view><text class="street-card-name">转牌保险</text><text class="street-status-text">{{buyer.turn.statusLabel}}</text><view class="street-description">发出转牌后保存本街买入</view></view><view class="street-odds-summary"><text class="street-odds-number">{{buyer.turn.oddsValueText}}</text><text>{{buyer.turn.oddsModeText}}</text><button class="auto-odds-button {{buyer.turn.oddsOverride ? '' : 'auto-odds-active'}}" disabled="{{!buyer.turn.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" data-odds-index="0" bindtap="onOddsQuickSelect">自动</button></view></view>
+            <view class="street-outs-row"><text class="street-outs-label">{{buyer.turn.outsLabel}}</text><button wx:if="{{buyer.turn.canViewOuts}}" class="outs-detail-trigger outs-detail-trigger-{{buyer.turn.outsCoverageMode}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" bindtap="openOutsDetail" aria-label="选择转牌保险 outs，{{buyer.turn.outsCoverageAria}}"><text wx:if="{{buyer.turn.outsCoverageMode === 'full'}}">全保 {{buyer.turn.outsCoverageTotal}} 张</text><block wx:elif="{{buyer.turn.outsCoverageMode === 'partial'}}"><text class="outs-covered-count">已保 {{buyer.turn.outsCoverageInsured}}</text><text class="outs-uncovered-count"> / 未保 {{buyer.turn.outsCoverageUninsured}}</text></block><text wx:else>{{buyer.turn.outsCount}} 张</text><text class="outs-detail-chevron">›</text></button><view wx:else class="outs-manual-value"><text wx:if="{{buyer.turn.manualOuts}}" class="outs-manual-label">手动档位</text><text class="street-outs-value">{{buyer.turn.outsInput}}</text></view></view>
             <view class="odds-scale"><view wx:for="{{view.oddsScale}}" wx:key="index" class="odds-scale-item {{item.index === buyer.turn.selectedScaleIndex ? 'odds-scale-selected' : ''}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" data-odds-index="{{item.index}}" bindtap="onOddsQuickSelect">{{item.label}}</view></view>
             <view class="odds-position-row"><view wx:for="{{view.oddsScale}}" wx:key="index" class="odds-position-item {{item.index === buyer.turn.selectedScaleIndex ? 'odds-position-selected' : ''}}"><text>{{item.position}}</text><view class="odds-position-bar"></view></view></view>
-            <slider class="odds-slider" min="1" max="17" value="{{buyer.turn.oddsScaleIndex}}" step="1" disabled="{{!buyer.turn.configurable}}" activeColor="#C69A2E" backgroundColor="#E8DED4" blockColor="#FFFFFF" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" bindchange="onOddsSliderChange" />
-            <view class="field-label">转牌保险买入</view><view class="money-input"><input type="digit" value="{{buyer.turn.buyInput}}" disabled="{{!buyer.turn.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" data-field="buy" bindinput="onStreetInput" /><text>¥</text></view>
-            <view class="max-buy-text">最多可买 ¥{{buyer.turn.maxBuyText}}</view>
-            <view class="ratio-row"><button wx:for="{{view.buyRatios}}" wx:key="value" class="ratio-button" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" data-max="{{buyer.turn.maxBuy}}" data-ratio="{{item.value}}" bindtap="onBuyRatioTap">{{item.label}}</button></view>
-            <view class="payout-box"><text>转牌爆保险可收</text><text>¥{{buyer.turn.payoutText}}</text></view>
-            <picker class="street-status-picker" mode="selector" range="{{view.statusLabels}}" value="{{buyer.turn.statusPickerIndex}}" disabled="{{!buyer.turn.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" bindchange="onStatusChange"><view class="picker-value">当前结算：{{buyer.turn.statusLabel}}</view></picker>
+            <slider class="odds-slider" block-size="16" min="1" max="17" value="{{buyer.turn.oddsScaleIndex}}" step="1" disabled="{{!buyer.turn.configurable}}" activeColor="#C69A2E" backgroundColor="#E8DED4" blockColor="#FFFFFF" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" bindchanging="onOddsSliderChanging" bindchange="onOddsSliderChange" />
+            <view class="buy-heading"><view class="field-label">转牌保险买入</view><view class="max-buy-text"><text wx:if="{{buyer.turn.status === 'settled'}}">转牌保险已结束</text><text wx:else>最多可买 ¥{{buyer.turn.maxBuyText}}</text></view></view><view class="money-input"><input type="number" value="{{buyer.turn.buyInput}}" disabled="{{!buyer.turn.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" data-field="buy" bindinput="onStreetInput" bindblur="onStreetBuyCommit" bindconfirm="onStreetBuyCommit" /><text>¥</text></view>
+            <view class="ratio-row"><button wx:for="{{view.buyRatios}}" wx:key="value" class="ratio-button" disabled="{{!buyer.turn.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" data-max="{{buyer.turn.maxBuy}}" data-ratio="{{item.value}}" bindtap="onBuyRatioTap">{{item.label}}</button></view>
+            <view class="street-result-row"><view class="payout-box"><text>转牌爆保险可收</text><text>¥{{buyer.turn.payoutText}}</text></view><picker class="street-status-picker" mode="selector" range="{{view.statusLabels}}" value="{{buyer.turn.statusPickerIndex}}" disabled="{{!buyer.turn.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="turn" bindchange="onStatusChange"><view class="picker-value">{{buyer.turn.settlementStatusShortText}}</view></picker></view>
+            </view>
           </view>
-          <view class="street-card">
-            <view class="street-card-head"><view><text class="street-card-name">河牌保险</text><text class="street-status-text">{{buyer.river.statusLabel}}</text></view><view class="street-odds-summary"><text class="street-odds-number">{{buyer.river.oddsValueText}}</text><text>{{buyer.river.oddsModeText}}</text><button class="auto-odds-button {{buyer.river.oddsOverride ? '' : 'auto-odds-active'}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" data-odds-index="0" bindtap="onOddsQuickSelect">自动</button></view></view>
-            <view class="street-description">当前估算 · {{buyer.river.refreshLabel || '河牌结算后定格'}}</view>
-            <view class="street-outs-row"><text>当前 outs</text><input type="number" value="{{buyer.river.outsInput}}" disabled="{{!buyer.river.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" data-field="outs" bindinput="onStreetInput" /></view>
-            <slider class="outs-slider" min="0" max="17" value="{{buyer.river.outs || 0}}" step="1" disabled="{{!buyer.river.configurable}}" activeColor="#C69A2E" backgroundColor="#E8DED4" blockColor="#FFFFFF" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" bindchange="onOutsSliderChange" />
+          <view wx:if="{{buyer.river.status !== 'notApplicable'}}" class="street-card">
+            <button wx:if="{{buyer.river.settled}}" class="settled-street-toggle" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" bindtap="toggleSettledStreet" aria-label="河牌保险已结束，买入{{buyer.river.settledBuyText}}，{{buyer.river.settlementSummaryText}}，{{buyer.river.collapsed ? '展开明细' : '收起明细'}}"><text class="settled-street-title">河牌保险已结束</text><view class="settled-street-summary"><text>买入 ¥{{buyer.river.settledBuyText}}</text><text>/</text><text class="settled-street-result {{buyer.river.settlementSummaryClass}}">{{buyer.river.settlementSummaryText}}</text></view><view class="settled-street-chevron {{buyer.river.collapsed ? '' : 'settled-street-chevron-open'}}"></view></button>
+            <view wx:if="{{!buyer.river.collapsed}}" class="street-details">
+            <view class="street-card-head"><view><text class="street-card-name">河牌保险</text><text class="street-status-text">{{buyer.river.statusLabel}}</text><view class="street-description">{{buyer.river.refreshLabel || '河牌结算后定格'}}</view></view><view class="street-odds-summary"><text class="street-odds-number">{{buyer.river.oddsValueText}}</text><text>{{buyer.river.oddsModeText}}</text><button class="auto-odds-button {{buyer.river.oddsOverride ? '' : 'auto-odds-active'}}" disabled="{{!buyer.river.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" data-odds-index="0" bindtap="onOddsQuickSelect">自动</button></view></view>
+            <view class="street-outs-row"><text class="street-outs-label">{{buyer.river.outsLabel}}</text><button wx:if="{{buyer.river.canViewOuts}}" class="outs-detail-trigger outs-detail-trigger-{{buyer.river.outsCoverageMode}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" bindtap="openOutsDetail" aria-label="选择河牌保险 outs，{{buyer.river.outsCoverageAria}}"><text wx:if="{{buyer.river.outsCoverageMode === 'full'}}">全保 {{buyer.river.outsCoverageTotal}} 张</text><block wx:elif="{{buyer.river.outsCoverageMode === 'partial'}}"><text class="outs-covered-count">已保 {{buyer.river.outsCoverageInsured}}</text><text class="outs-uncovered-count"> / 未保 {{buyer.river.outsCoverageUninsured}}</text></block><text wx:else>{{buyer.river.outsCount}} 张</text><text class="outs-detail-chevron">›</text></button><view wx:else class="outs-manual-value"><text wx:if="{{buyer.river.manualOuts}}" class="outs-manual-label">手动档位</text><text class="street-outs-value">{{buyer.river.outsInput}}</text></view></view>
             <view class="odds-scale"><view wx:for="{{view.oddsScale}}" wx:key="index" class="odds-scale-item {{item.index === buyer.river.selectedScaleIndex ? 'odds-scale-selected' : ''}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" data-odds-index="{{item.index}}" bindtap="onOddsQuickSelect">{{item.label}}</view></view>
             <view class="odds-position-row"><view wx:for="{{view.oddsScale}}" wx:key="index" class="odds-position-item {{item.index === buyer.river.selectedScaleIndex ? 'odds-position-selected' : ''}}"><text>{{item.position}}</text><view class="odds-position-bar"></view></view></view>
-            <slider class="odds-slider" min="1" max="17" value="{{buyer.river.oddsScaleIndex}}" step="1" disabled="{{!buyer.river.configurable}}" activeColor="#C69A2E" backgroundColor="#E8DED4" blockColor="#FFFFFF" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" bindchange="onOddsSliderChange" />
-            <view class="field-label">河牌保险买入</view><view class="money-input"><input type="digit" value="{{buyer.river.buyInput}}" disabled="{{!buyer.river.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" data-field="buy" bindinput="onStreetInput" /><text>¥</text></view>
-            <view class="max-buy-text">最多可买 ¥{{buyer.river.maxBuyText}}</view>
-            <view class="ratio-row"><button wx:for="{{view.buyRatios}}" wx:key="value" class="ratio-button" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" data-max="{{buyer.river.maxBuy}}" data-ratio="{{item.value}}" bindtap="onBuyRatioTap">{{item.label}}</button></view>
-            <view class="payout-box"><text>河牌爆保险可收</text><text>¥{{buyer.river.payoutText}}</text></view>
-            <picker class="street-status-picker" mode="selector" range="{{view.statusLabels}}" value="{{buyer.river.statusPickerIndex}}" disabled="{{!buyer.river.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" bindchange="onStatusChange"><view class="picker-value">当前结算：{{buyer.river.statusLabel}}</view></picker>
+            <slider class="odds-slider" block-size="16" min="1" max="17" value="{{buyer.river.oddsScaleIndex}}" step="1" disabled="{{!buyer.river.configurable}}" activeColor="#C69A2E" backgroundColor="#E8DED4" blockColor="#FFFFFF" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" bindchanging="onOddsSliderChanging" bindchange="onOddsSliderChange" />
+            <view class="buy-heading"><view class="field-label">河牌保险买入</view><view class="max-buy-text">最多可买 ¥{{buyer.river.maxBuyText}}</view></view><view class="money-input"><input type="number" value="{{buyer.river.buyInput}}" disabled="{{!buyer.river.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" data-field="buy" bindinput="onStreetInput" bindblur="onStreetBuyCommit" bindconfirm="onStreetBuyCommit" /><text>¥</text></view>
+            <view class="ratio-row"><button wx:for="{{view.buyRatios}}" wx:key="value" class="ratio-button" disabled="{{!buyer.river.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" data-max="{{buyer.river.maxBuy}}" data-ratio="{{item.value}}" bindtap="onBuyRatioTap">{{item.label}}</button></view>
+            <view class="street-result-row"><view class="payout-box"><text>河牌爆保险可收</text><text>¥{{buyer.river.payoutText}}</text></view><picker class="street-status-picker" mode="selector" range="{{view.statusLabels}}" value="{{buyer.river.statusPickerIndex}}" disabled="{{!buyer.river.configurable}}" data-pool-id="{{pool.id}}" data-buyer="{{buyer.buyer}}" data-street="river" bindchange="onStatusChange"><view class="picker-value">{{buyer.river.settlementStatusShortText}}</view></picker></view>
+            </view>
           </view>
         </view>
         <view class="probability-strip">
           <view class="summary-item"><text class="muted">转牌爆概率</text><text class="summary-value">{{buyer.settlement.probabilityTexts.turnHit}}</text></view>
           <view class="summary-item"><text class="muted">河牌爆概率</text><text class="summary-value">{{buyer.settlement.probabilityTexts.riverHit}}</text></view>
+          <view wx:if="{{buyer.settlement.hasUncoveredRisk}}" class="summary-item"><text class="muted">未投保反超概率</text><text class="summary-value">{{buyer.settlement.probabilityTexts.uncovered}}</text></view>
           <view class="summary-item"><text class="muted">双安全概率</text><text class="summary-value">{{buyer.settlement.probabilityTexts.bothSafe}}</text></view>
         </view>
         <view wx:for="{{buyer.settlement.rows}}" wx:for-item="row" wx:key="key" class="settlement-row">
@@ -101,12 +113,12 @@
         <view class="summary-grid">
         <view class="summary-item"><text class="muted">计划买入</text><text class="summary-value">¥{{pool.summary.plannedBuyText}}</text></view>
         <view class="summary-item"><text class="muted">期望实收</text><text class="summary-value">¥{{pool.summary.expectedReceiptText}}</text></view>
-        <view class="summary-item"><text class="muted">期望净盈亏</text><text class="summary-value">¥{{pool.summary.expectedNetText}}</text></view>
+        <view class="summary-item"><text class="muted">期望净盈亏</text><text class="summary-value {{pool.summary.expectedNet >= 0 ? 'positive' : 'negative'}}">¥{{pool.summary.expectedNetText}}</text></view>
         </view>
         <view class="summary-grid">
-        <view class="summary-item"><text class="muted">不买保险</text><text class="summary-value">¥{{pool.summary.expectedNoInsuranceText}}</text></view>
-        <view class="summary-item"><text class="muted">最差边界</text><text class="summary-value">¥{{pool.summary.worstNetText}}</text></view>
-        <view class="summary-item"><text class="muted">最好边界</text><text class="summary-value">¥{{pool.summary.bestNetText}}</text></view>
+        <view class="summary-item"><text class="muted">不买保险</text><text class="summary-value {{pool.summary.expectedNoInsurance >= 0 ? 'positive' : 'negative'}}">¥{{pool.summary.expectedNoInsuranceText}}</text></view>
+        <view class="summary-item"><text class="muted">最差边界</text><text class="summary-value {{pool.summary.worstNet >= 0 ? 'positive' : 'negative'}}">¥{{pool.summary.worstNetText}}</text></view>
+        <view class="summary-item"><text class="muted">最好边界</text><text class="summary-value {{pool.summary.bestNet >= 0 ? 'positive' : 'negative'}}">¥{{pool.summary.bestNetText}}</text></view>
         </view>
         <view class="muted">已结算买入 ¥{{pool.summary.settledBuyText}} · 已结算实收 ¥{{pool.summary.settledReceiptText}} · 已结算净盈亏 ¥{{pool.summary.settledNetText}}</view>
         <view class="history-item"><text class="history-label">策略 EV</text><text>不买保险 ¥{{pool.summary.strategyEVText.noInsurance}} · 只买转牌 ¥{{pool.summary.strategyEVText.turnOnly}} · 转牌+河牌 ¥{{pool.summary.strategyEVText.bothStreets}}</text></view>
@@ -128,9 +140,9 @@
   <view class="section configuration-section configuration-cards-section">
     <view class="section-heading-row">
       <view class="section-title">牌面与手牌</view>
-      <view class="section-note">完成牌面后自动计算 outs</view>
+      <view class="section-note">录入后点击计算</view>
     </view>
-    <view class="field">
+    <view class="field player-count-field">
       <view class="field-label">玩家人数</view>
       <picker mode="selector" range="{{view.playerCountLabels}}" value="{{view.playerCountPickerIndex}}" bindchange="onPlayerCountChange">
         <view class="picker-value">{{view.playerCountLabels[view.playerCountPickerIndex]}}</view>
@@ -144,13 +156,10 @@
       <view class="player-card" wx:for="{{view.players}}" wx:key="key">
         <view class="field-label">玩家 {{item.key}}</view>
         <card-picker class="hand-group-picker" options="{{item.cardOptions}}" values="{{item.cards}}" max="2" title="选择玩家 {{item.key}} 手牌" placeholder="点击选择手牌" player="{{item.key}}" group="player" bindselect="onPlayerCardsSelect" />
-        <view class="muted">全押 {{item.financial.allInText}} · 实际入池 {{item.financial.actualInPotText}} · 退回 {{item.financial.returnedText}}</view>
-        <view class="muted">计划保险买入 ¥{{item.financial.plannedBuyText}} · 期望净盈亏 ¥{{item.financial.expectedNetText}}</view>
-        <view class="muted">当前：{{item.currentStatus}} · 下一街 outs：{{item.nextOutsText}} · 到河牌：{{item.equityBreakdownText}}</view>
       </view>
     </view>
     <view wx:if="{{view.error}}" class="error">输入错误：{{view.error}}</view>
-    <button class="inline-reset-button" bindtap="onReset">重置</button>
+    <button class="inline-reset-button" hover-class="inline-reset-button-pressed" bindtap="onReset">重置<image class="reset-icon" src="/insurance-module/assets/reset.svg" mode="aspectFit" aria-hidden="true" /></button>
   </view>
 
   <view class="section configuration-section configuration-pot-section">
@@ -161,11 +170,11 @@
     <view wx:if="{{mode === 'single'}}" class="button-row">
       <view class="field">
         <view class="field-label">可保底池</view>
-        <input type="digit" data-field="coverage" value="{{stateCoverage}}" bindinput="onAmountInput" placeholder="底池金额" />
+        <input type="digit" data-field="coverage" value="{{stateCoverage}}" bindinput="onAmountInput" bindblur="onAmountCommit" bindconfirm="onAmountCommit" placeholder="底池金额" />
       </view>
       <view class="field">
         <view class="field-label">我的实际投入</view>
-        <input type="digit" data-field="stake" value="{{stateStake}}" bindinput="onAmountInput" placeholder="投入金额" />
+        <input type="digit" data-field="stake" value="{{stateStake}}" bindinput="onAmountInput" bindblur="onAmountCommit" bindconfirm="onAmountCommit" placeholder="投入金额" />
       </view>
     </view>
     <view wx:if="{{mode === 'multi'}}">
@@ -173,12 +182,14 @@
       <view class="button-row" wx:for="{{view.players}}" wx:key="key">
         <view class="field">
           <view class="field-label">玩家 {{item.key}}</view>
-          <input type="digit" value="{{contributions[item.key]}}" data-player="{{item.key}}" bindinput="onContributionInput" placeholder="金额" />
+          <input type="digit" value="{{contributions[item.key]}}" data-player="{{item.key}}" bindinput="onContributionInput" bindblur="onContributionCommit" bindconfirm="onContributionCommit" placeholder="金额" />
           <picker mode="selector" range="{{view.rankLabels}}" value="{{item.rankPickerIndex}}" data-player="{{item.key}}" bindchange="onRankChange">
             <view class="picker-value">{{item.rank ? ('排名 ' + item.rank) : '自动判定排名'}}</view>
           </picker>
         </view>
       </view>
+      <view class="rake-row"><text class="field-label">抽水比例</text><view class="rake-input"><input type="digit" value="{{stateRakeRate}}" placeholder="0" disabled="{{view.rakeLocked}}" bindinput="onRakeRateInput" bindblur="onRakeRateCommit" bindconfirm="onRakeRateCommit" /><text>%</text></view></view>
+      <view wx:if="{{view.rakeLocked}}" class="rake-note">发牌后抽水比例已锁定</view>
     </view>
   </view>
 
@@ -194,15 +205,35 @@
     </view>
     <view class="summary-grid">
       <view class="summary-item"><text class="muted">计划买入</text><text class="summary-value">¥{{view.summary.plannedBuyText}}</text></view>
-      <view class="summary-item"><text class="muted">期望净盈亏</text><text class="summary-value">¥{{view.summary.expectedNetText}}</text></view>
-      <view class="summary-item"><text class="muted">不买保险</text><text class="summary-value">¥{{view.summary.expectedNoInsuranceText}}</text></view>
+      <view class="summary-item"><text class="muted">期望净盈亏</text><text class="summary-value {{view.summary.expectedNet >= 0 ? 'positive' : 'negative'}}">¥{{view.summary.expectedNetText}}</text></view>
+      <view class="summary-item"><text class="muted">不买保险</text><text class="summary-value {{view.summary.expectedNoInsurance >= 0 ? 'positive' : 'negative'}}">¥{{view.summary.expectedNoInsuranceText}}</text></view>
     </view>
     <view class="muted">已结算买入 ¥{{view.summary.settledBuyText}} · 已结算实收 ¥{{view.summary.settledReceiptText}} · 已结算净盈亏 ¥{{view.summary.settledNetText}}</view>
     <view class="history-item">总策略 EV：不买保险 ¥{{view.summary.strategyEVText.noInsurance}} · 只买转牌 ¥{{view.summary.strategyEVText.turnOnly}} · 转牌+河牌 ¥{{view.summary.strategyEVText.bothStreets}}</view>
     <view class="summary-grid">
-      <view class="summary-item"><text class="muted">最差边界</text><text class="summary-value">¥{{view.summary.worstNetText}}</text></view>
-      <view class="summary-item"><text class="muted">最好边界</text><text class="summary-value">¥{{view.summary.bestNetText}}</text></view>
+      <view class="summary-item"><text class="muted">最差边界</text><text class="summary-value {{view.summary.worstNet >= 0 ? 'positive' : 'negative'}}">¥{{view.summary.worstNetText}}</text></view>
+      <view class="summary-item"><text class="muted">最好边界</text><text class="summary-value {{view.summary.bestNet >= 0 ? 'positive' : 'negative'}}">¥{{view.summary.bestNetText}}</text></view>
     </view>
     <view class="muted">历史快照：{{view.history.length}} 条。发出转牌或河牌后，已结算街道不会被刷新清空。</view>
+  </view>
+</view>
+
+<view wx:if="{{outsDetail}}" class="outs-detail-mask" catchtap="closeOutsDetail" catchtouchmove="preventOutsMove">
+  <view class="outs-detail-panel" catchtap="preventOutsMove">
+    <view class="outs-detail-header"><text>{{outsDetail.title}}</text><button class="outs-detail-close" bindtap="closeOutsDetail" aria-label="关闭 outs 明细">×</button></view>
+    <scroll-view class="outs-detail-body" style="height: {{outsDetail.bodyHeight}}rpx;" scroll-y enhanced>
+      <view class="outs-detail-section"><text class="outs-detail-label">计算依据 · 公共牌</text><view class="outs-detail-cards"><view wx:for="{{outsDetail.board}}" wx:key="value" class="outs-card {{item.red ? 'outs-card-red' : ''}}"><text>{{item.rank}}</text><text>{{item.suit}}</text></view></view></view>
+      <view class="outs-detail-section"><text class="outs-detail-label">购买玩家 {{outsDetail.buyer}} · 手牌</text><view class="outs-detail-cards"><view wx:for="{{outsDetail.hand}}" wx:key="value" class="outs-card {{item.red ? 'outs-card-red' : ''}}"><text>{{item.rank}}</text><text>{{item.suit}}</text></view></view></view>
+      <text wx:if="{{!outsDetail.settled}}" class="outs-detail-note">按类型或单张牌选择，重复牌只算一次。未选中的牌命中时，投入与已付保险费仍会损失。</text>
+      <view class="outs-detail-section" wx:for="{{outsDetail.groups}}" wx:for-item="group" wx:key="key">
+        <button class="outs-group-heading" data-key="{{group.key}}" bindtap="toggleOutsGroup" disabled="{{outsDetail.settled}}"><view class="outs-check {{group.checked ? 'outs-check-active' : group.partial ? 'outs-check-partial' : ''}}"><text wx:if="{{group.checked}}">✓</text></view><text>{{group.label}}</text><text class="outs-group-count">{{group.count}} / {{group.cards.length}} 张</text></button>
+        <view class="outs-detail-grid"><button wx:for="{{group.cards}}" wx:key="value" class="outs-card outs-select-card {{item.red ? 'outs-card-red' : ''}} {{item.selected ? 'outs-card-selected' : ''}}" data-card="{{item.value}}" bindtap="toggleOutsCard" disabled="{{outsDetail.settled}}" aria-label="{{item.rank}}{{item.suit}}{{item.selected ? '已选' : '未选'}}"><text>{{item.rank}}</text><text>{{item.suit}}</text><text class="outs-card-check">{{item.selected ? '✓' : ''}}</text></button></view>
+      </view>
+      <text wx:if="{{!outsDetail.total}}" class="outs-detail-note">当前计算没有触发保险的牌</text>
+      <text wx:if="{{outsDetail.estimated}}" class="outs-detail-note">转牌尚未发出，当前按前三张公共牌预估；发出转牌后会更新河牌 outs。</text>
+      <text wx:if="{{outsDetail.settled}}" class="outs-detail-note">本街保险已结束，以上为发牌前保存的计算牌面。</text>
+      <text wx:if="{{outsDetail.count > 17}}" class="outs-detail-note">已选 {{outsDetail.count}} 张，赔率沿用 17 outs 档。</text>
+    </scroll-view>
+    <view class="outs-selection-footer"><view class="outs-selection-summary"><text>已选 {{outsDetail.count}} 张 / 全部 {{outsDetail.total}} 张</text><text>{{outsDetail.oddsText}}</text></view><view wx:if="{{!outsDetail.settled}}" class="outs-selection-actions"><button class="outs-secondary-button" data-mode="all" bindtap="selectAllOuts">全选</button><button class="outs-secondary-button" data-mode="clear" bindtap="selectAllOuts">清空</button><button class="outs-apply-button" bindtap="confirmOutsSelection">确认应用</button></view></view>
   </view>
 </view>

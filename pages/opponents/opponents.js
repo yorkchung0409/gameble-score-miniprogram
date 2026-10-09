@@ -31,9 +31,14 @@ Page({
   },
 
   async loadOpponents() {
+    const generation = this.opponentGeneration = (this.opponentGeneration || 0) + 1;
+    this.refreshingOpponents = true;
+    this.setData({ loadingMore: false });
     try {
       await app.login();
+      if (generation !== this.opponentGeneration) return;
       const result = await app.request({ path: `/api/mini/me/mahjong-opponents?limit=${OPPONENT_BATCH_SIZE}&offset=0` });
+      if (generation !== this.opponentGeneration) return;
       this.allOpponents = this.decorateOpponents(result.opponents || []);
       this.serverPagedOpponents = Number.isFinite(Number(result.nextOffset));
       this.nextOpponentOffset = this.serverPagedOpponents
@@ -53,12 +58,15 @@ Page({
           : this.visibleOpponentCount < this.allOpponents.length,
       });
     } catch (error) {
+      if (generation !== this.opponentGeneration) return;
       const message = error.message || '对手战绩加载失败';
       if (this.data.opponents.length) {
         this.setData({ loading: false, syncWarning: '刷新暂时失败，当前显示上次成功加载的数据' });
       } else {
         this.setData({ loading: false, loadError: message });
       }
+    } finally {
+      if (generation === this.opponentGeneration) this.refreshingOpponents = false;
     }
   },
 
@@ -76,13 +84,15 @@ Page({
   },
 
   async loadMore() {
-    if (!this.data.hasMore || this.data.loadingMore) return;
+    if (!this.data.hasMore || this.data.loadingMore || this.refreshingOpponents) return;
+    const generation = this.opponentGeneration;
     if (this.serverPagedOpponents) {
       this.setData({ loadingMore: true });
       try {
         const result = await app.request({
           path: `/api/mini/me/mahjong-opponents?limit=${OPPONENT_BATCH_SIZE}&offset=${this.nextOpponentOffset}`,
         });
+        if (generation !== this.opponentGeneration) return;
         const knownIds = new Set(this.allOpponents.map((opponent) => opponent.userId));
         const nextOpponents = this.decorateOpponents(result.opponents || [])
           .filter((opponent) => !knownIds.has(opponent.userId));
@@ -94,9 +104,10 @@ Page({
           hasMore: Boolean(result.hasMore),
         });
       } catch (error) {
+        if (generation !== this.opponentGeneration) return;
         wx.showToast({ title: error.message || '对手加载失败', icon: 'none' });
       } finally {
-        this.setData({ loadingMore: false });
+        if (generation === this.opponentGeneration) this.setData({ loadingMore: false });
       }
       return;
     }

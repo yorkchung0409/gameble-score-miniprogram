@@ -24,7 +24,6 @@
     <text class="section-title">房间活跃度</text>
     <view class="metric-grid">
       <view class="metric mahjong"><text class="metric-value">{{overview.rooms.activeMahjongIn30Minutes}}</text><text class="metric-label">30 分钟活跃麻将房</text></view>
-      <view class="metric poker"><text class="metric-value">{{overview.rooms.activePokerIn30Minutes}}</text><text class="metric-label">30 分钟活跃扑克账本</text></view>
     </view>
   </view>
 

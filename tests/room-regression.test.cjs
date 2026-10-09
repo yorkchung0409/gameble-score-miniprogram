@@ -7,6 +7,36 @@ const { createRequire } = require('node:module');
 
 const root = path.resolve(__dirname, '..');
 
+test('opponent refresh discards stale pagination and out-of-order refreshes', async () => {
+  const requests = [];
+  const app = { login: async () => {}, request: () => new Promise((resolve, reject) => requests.push({ resolve, reject })) };
+  const { definition } = loadPage('pages/opponents/opponents.js', app);
+  const page = createPage(definition, { hasMore: true });
+  page.allOpponents = [{ userId: 'old' }];
+  page.serverPagedOpponents = true; page.nextOpponentOffset = 30;
+  const oldPage = page.loadMore();
+  const refresh = page.loadOpponents();
+  await Promise.resolve();
+  await page.loadMore();
+  assert.equal(requests.length, 2);
+  requests[1].resolve({ opponents: [{ userId: 'fresh' }], total: 1, nextOffset: 1, hasMore: false });
+  await refresh;
+  requests[0].resolve({ opponents: [{ userId: 'stale' }], total: 60, nextOffset: 60, hasMore: true });
+  await oldPage;
+  assert.equal(page.data.opponents.map(r => r.userId).join(','), 'fresh');
+  assert.equal(page.data.total, 1);
+  assert.equal(page.nextOpponentOffset, 1);
+  assert.equal(page.data.loadingMore, false);
+  const first = page.loadOpponents(); await new Promise(resolve => setImmediate(resolve));
+  const second = page.loadOpponents(); await new Promise(resolve => setImmediate(resolve));
+  requests[3].resolve({ opponents: [{ userId: 'newest' }], total: 1, nextOffset: 1, hasMore: false });
+  await second;
+  requests[2].reject(new Error('stale error'));
+  await first;
+  assert.equal(page.data.opponents[0].userId, 'newest');
+  assert.equal(page.data.syncWarning, '');
+});
+
 function loadPage(relativePath, app, wxOverrides = {}) {
   const filename = path.join(root, relativePath);
   let definition;
@@ -459,130 +489,6 @@ test('seat changes apply the mutation response without an extra room request', a
   assert.equal(applied, 1);
 });
 
-test('four-player poker save is multi-select and ignores rapid duplicate taps', async () => {
-  let requestCount = 0;
-  let requestData;
-  let releaseRequest;
-  const app = {
-    createOperationId: () => 'poker_game_test',
-    request(options) {
-      requestCount += 1;
-      requestData = options.data;
-      return new Promise((resolve) => { releaseRequest = resolve; });
-    },
-  };
-  const { definition } = loadPage('pages/poker/poker.js', app);
-  const page = createPage(definition, {
-    roomCode: 'POKER1',
-    gameDate: '2026-09-06',
-    gameRows: ['p1', 'p2', 'p3', 'p4'].map((playerId, index) => ({
-      playerId,
-      playerName: `玩家${index + 1}`,
-      buyIn: '100',
-      balance: index < 2 ? '150' : '50',
-    })),
-  });
-  page.gameOperationId = 'poker_game_test';
-  page.closeGameEditor = () => {};
-  page.loadRoom = async () => {};
-
-  const first = page.saveGame();
-  const second = page.saveGame();
-  assert.equal(requestCount, 1);
-  assert.equal(requestData.players.length, 4);
-  assert.equal(requestData.operationId, 'poker_game_test');
-  releaseRequest({});
-  await Promise.all([first, second]);
-});
-
-test('filtered history loads only the requested game type', async () => {
-  let pokerCalls = 0;
-  let mahjongCalls = 0;
-  const app = {
-    login: async () => ({ user: { id: 'u1' } }),
-    getPersonalPokerLedgers: async () => {
-      pokerCalls += 1;
-      return { ledgers: [], hasMore: false, nextOffset: 0 };
-    },
-    getPersonalMahjongRooms: async () => {
-      mahjongCalls += 1;
-      return { rooms: [], hasMore: false, nextOffset: 0 };
-    },
-  };
-  const { definition } = loadPage('pages/history/history.js', app);
-  const page = createPage(definition, { activeType: 'poker' });
-  await page.loadHistory();
-  assert.equal(pokerCalls, 1);
-  assert.equal(mahjongCalls, 0);
-});
-
-test('switching a filtered history page loads the previously omitted type', async () => {
-  let pokerCalls = 0;
-  let mahjongCalls = 0;
-  const app = {
-    login: async () => ({ user: { id: 'u1' } }),
-    getPersonalPokerLedgers: async () => {
-      pokerCalls += 1;
-      return { ledgers: [], total: 0, hasMore: false, nextOffset: 0 };
-    },
-    getPersonalMahjongRooms: async () => {
-      mahjongCalls += 1;
-      return { rooms: [], total: 0, hasMore: false, nextOffset: 0 };
-    },
-  };
-  const { definition } = loadPage('pages/history/history.js', app);
-  const page = createPage(definition, { activeType: 'poker' });
-  await page.loadHistory();
-  await page.switchType({ currentTarget: { dataset: { type: 'mahjong' } } });
-
-  assert.equal(pokerCalls, 1);
-  assert.equal(mahjongCalls, 1);
-  assert.equal(page.data.mahjongLoaded, true);
-});
-
-test('stale history responses cannot overwrite the latest request', async () => {
-  const pokerPending = [];
-  const mahjongPending = [];
-  const app = {
-    login: async () => ({ user: { id: 'u1' } }),
-    getPersonalPokerLedgers: () => new Promise((resolve) => pokerPending.push(resolve)),
-    getPersonalMahjongRooms: () => new Promise((resolve) => mahjongPending.push(resolve)),
-  };
-  const { definition } = loadPage('pages/history/history.js', app);
-  const page = createPage(definition, { activeType: 'all' });
-  const first = page.loadHistory();
-  const second = page.loadHistory();
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(pokerPending.length, 2);
-  assert.equal(mahjongPending.length, 2);
-  pokerPending[1]({
-    ledgers: [{ room: { roomCode: 'LATEST', roomName: '最新' }, myNetProfit: '2' }],
-    total: 1,
-    hasMore: false,
-    nextOffset: 1,
-  });
-  mahjongPending[1]({ rooms: [], total: 0, hasMore: false, nextOffset: 0 });
-  pokerPending[0]({
-    ledgers: [{ room: { roomCode: 'STALE', roomName: '旧响应' }, myNetProfit: '1' }],
-    total: 1,
-    hasMore: false,
-    nextOffset: 1,
-  });
-  mahjongPending[0]({ rooms: [], total: 0, hasMore: false, nextOffset: 0 });
-  await Promise.all([first, second]);
-  assert.equal(page.data.pokerLedgers[0].room.roomCode, 'LATEST');
-});
-
-test('history tabs contain only Mahjong on the left and poker on the right', () => {
-  const wxml = fs.readFileSync(path.join(root, 'pages/history/history.wxml'), 'utf8');
-  const segmentedStart = wxml.indexOf('<view class="segmented">');
-  const segmentedEnd = wxml.indexOf('<block', segmentedStart);
-  const segmented = wxml.slice(segmentedStart, segmentedEnd);
-  assert.equal(segmented.indexOf('麻将房') < segmented.indexOf('扑克账本'), true);
-  assert.doesNotMatch(segmented, />全部</);
-  assert.doesNotMatch(wxml, /activeType == 'all'/);
-});
-
 test('a transient profile refresh keeps the last successful dashboard visible', async () => {
   const app = {
     login: async () => ({ user: { id: 'u1' } }),
@@ -653,57 +559,83 @@ test('saving a nickname does not fall back to a second request path', async () =
   assert.equal(page.data.user.name, '微信用户');
 });
 
-test('poker settings are saved with one atomic request', async () => {
-  let requestCount = 0;
-  let requestOptions;
-  const app = {
-    request: async (options) => {
-      requestCount += 1;
-      requestOptions = options;
-      return {};
+
+test('history loads Mahjong even when opened with a retired poker filter', async () => {
+  let calls = 0;
+  const { definition } = loadPage('pages/history/history.js', {
+    login: async () => ({ user: { id: 'u1' } }),
+    getPersonalMahjongRooms: async () => {
+      calls += 1;
+      return { rooms: [{ roomCode: 'M1', myNetProfit: '12', lastActivityAt: '2026-09-28' }], total: 1 };
     },
-  };
-  const { definition } = loadPage('pages/poker/poker.js', app);
-  const page = createPage(definition, {
-    roomCode: 'POKER1',
-    roomNameInput: '周末账本',
-    selfPlayerOptions: [{ id: 'p1', name: '玩家1' }],
-    selfPlayerIndex: 0,
   });
-  page.applyDetail = () => {};
-
-  await page.saveRoomName();
-
-  assert.equal(requestCount, 1);
-  assert.equal(requestOptions.path, '/api/mini/poker/ledgers/POKER1/settings?gameLimit=20&gameOffset=0');
-  assert.equal(requestOptions.data.roomName, '周末账本');
-  assert.equal(requestOptions.data.selfPlayerId, 'p1');
+  const page = createPage(definition);
+  page.onLoad({ type: 'poker' });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls, 1);
+  assert.equal(page.data.mahjongRooms[0].roomCode, 'M1');
+  assert.equal(page.data.mahjongTotal, 1);
 });
 
-test('poker game pages are requested and merged without duplicates', async () => {
-  let requestPath = '';
-  const app = {
-    request: async (options) => {
-      requestPath = options.path;
-      return {
-        games: [{ id: 'g2' }],
-        gamePage: { total: 2, hasMore: false, nextOffset: 2 },
-      };
-    },
-  };
-  const { definition } = loadPage('pages/poker/poker.js', app);
-  const page = createPage(definition, {
-    roomCode: 'POKER1',
-    detail: { gamePage: { total: 2, hasMore: true, nextOffset: 1 } },
-    gamesHasMore: true,
+test('stale history responses cannot overwrite the latest request', async () => {
+  const pending = [];
+  const { definition } = loadPage('pages/history/history.js', {
+    login: async () => ({}),
+    getPersonalMahjongRooms: () => new Promise((resolve) => pending.push(resolve)),
   });
-  page.rawGames = [{ id: 'g1' }];
-  page.nextGameOffset = 1;
-  let merged;
-  page.applyDetail = (detail) => { merged = detail.games; };
+  const page = createPage(definition);
+  const first = page.loadHistory();
+  const second = page.loadHistory();
+  await new Promise((resolve) => setImmediate(resolve));
+  pending[1]({ rooms: [{ roomCode: 'LATEST' }], total: 1 });
+  await second;
+  pending[0]({ rooms: [{ roomCode: 'STALE' }], total: 1 });
+  await first;
+  assert.equal(page.data.mahjongRooms[0].roomCode, 'LATEST');
+});
 
-  await page.loadMoreGames();
+test('Mahjong history pagination deduplicates rooms and ignores a page superseded by refresh', async () => {
+  const pending = [];
+  const { definition } = loadPage('pages/history/history.js', {
+    login: async () => ({}),
+    getPersonalMahjongRooms: () => new Promise((resolve) => pending.push(resolve)),
+  });
+  const page = createPage(definition, {
+    mahjongRooms: [{ roomCode: 'M1' }], mahjongHasMore: true, mahjongOffset: 1,
+  });
+  page.historyRequestSeq = 1;
+  const more = page.loadMore();
+  pending[0]({ rooms: [{ roomCode: 'M1' }, { roomCode: 'M2' }], total: 3, hasMore: true, nextOffset: 2 });
+  await more;
+  assert.equal(page.data.mahjongRooms.map((room) => room.roomCode).join(','), 'M1,M2');
+  const staleMore = page.loadMore();
+  const refresh = page.loadHistory();
+  await new Promise((resolve) => setImmediate(resolve));
+  pending[2]({ rooms: [{ roomCode: 'NEW' }], total: 1, hasMore: false, nextOffset: 1 });
+  await refresh;
+  pending[1]({ rooms: [{ roomCode: 'OLD' }], total: 3, hasMore: true, nextOffset: 3 });
+  await staleMore;
+  assert.equal(page.data.mahjongRooms.map((room) => room.roomCode).join(','), 'NEW');
+  assert.equal(page.data.mahjongHasMore, false);
+});
 
-  assert.equal(requestPath, '/api/mini/poker/ledgers/POKER1?gameLimit=20&gameOffset=1');
-  assert.equal(merged.map((game) => game.id).join(','), 'g1,g2');
+test('profile uses Mahjong totals even with an old server returning poker profits', () => {
+  const { definition } = loadPage('pages/profile/profile.js', {});
+  const page = createPage(definition);
+  const summary = page.decorateSummary({
+    totalNetProfit: '999', poker: { netProfit: '989' },
+    mahjong: { netProfit: '10', teaFeeTotal: '2' },
+  });
+  assert.equal(summary.mahjongNetDisplay, '+10.00');
+  assert.equal(summary.totalNetDisplay, '—');
+  const ready = page.decorateSummary({
+    totalNetProfit: '999', poker: { netProfit: '989' },
+    bookkeeping: { netProfit: '-3.20', gameCount: 1 },
+    mahjong: { netProfit: '10', teaFeeTotal: '2' },
+  });
+  assert.equal(ready.totalNetDisplay, '+6.80');
+  assert.equal(ready.bookkeepingNetDisplay, '-3.20');
+  const wxml = fs.readFileSync(path.join(root, 'pages/profile/profile.wxml'), 'utf8');
+  assert.match(wxml, /summary.mahjongNetDisplay/);
+  assert.doesNotMatch(wxml, /summary.poker|扑克账本/);
 });

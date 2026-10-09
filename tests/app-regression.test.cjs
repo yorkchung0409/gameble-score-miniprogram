@@ -61,11 +61,21 @@ test('bootstrap probe calls the separate CloudBase environment without replacing
   assert.equal(app.globalData.startupMetrics.cloudFunction.ok, true);
 });
 
+test('bookkeeping version checks reach the Cloud Function through the request route', async () => {
+  const { app, functionCalls } = loadApp();
+  await app.request({ path: '/api/mini/bookkeeping?transport=3&offset=0&ifVersion=7' });
+  assert.equal(functionCalls.length, 1);
+  assert.equal(functionCalls[0].data.action, 'getBookkeeping');
+  assert.equal(functionCalls[0].data.ifVersion, '7');
+  assert.equal(functionCalls[0].data.offset, '0');
+  assert.equal(functionCalls[0].data.transport, '3');
+});
+
 test('bootstrap probe maps its lightweight result into the home recent-activity shape', async () => {
   const { app } = loadApp();
   const result = await app.getBootstrapRecentActivity();
   assert.equal(result.mahjongRooms.length, 0);
-  assert.equal(result.pokerLedgers.length, 0);
+  assert.equal(result.pokerLedgers, undefined);
 });
 
 test('function-first launch does not wake Cloud Hosting from the home page', async () => {
@@ -149,7 +159,7 @@ test('profile dashboard uses one aggregated Cloud Function request', async () =>
   const result = await pending;
   assert.equal(result.summary.user.id, 'u1');
   assert.equal(result.canAccessOperations, true);
-  assert.equal(result.pokerLedgers.length, 0);
+  assert.equal(result.pokerLedgers, undefined);
   assert.equal(result.mahjongRooms.length, 0);
 });
 
@@ -171,7 +181,7 @@ test('home recent activity uses one aggregated Cloud Function request', async ()
   assert.equal(functionCalls.length, 1);
   assert.equal(functionCalls[0].data.action, 'getPersonalRecentActivity');
   const result = await pending;
-  assert.equal(result.pokerLedgers[0].room.roomCode, 'P1');
+  assert.equal(result.pokerLedgers, undefined);
   assert.equal(result.mahjongRooms[0].roomCode, 'M1');
 });
 
@@ -213,13 +223,6 @@ test('forced shell refresh bypasses and clears its brief cache', async () => {
   assert.equal(functionCalls.length, 3);
 });
 
-test('home recent poker ledger uses an explicit enter action instead of exposing the room code', () => {
-  const wxml = fs.readFileSync(path.resolve(__dirname, '..', 'pages/home/home.wxml'), 'utf8');
-  const pokerRow = wxml.match(/<view wx:if="\{\{recentPokerLedger\}\}"[\s\S]*?<\/view>/)?.[0] || '';
-  assert.match(pokerRow, /class="recent-enter">进入<\/text>/);
-  assert.doesNotMatch(pokerRow, /class="recent-code">\{\{recentPokerLedger\.room\.roomCode\}\}/);
-});
-
 test('home recent Mahjong room uses the Mahjong action color', () => {
   const wxml = fs.readFileSync(path.resolve(__dirname, '..', 'pages/home/home.wxml'), 'utf8');
   const wxss = fs.readFileSync(path.resolve(__dirname, '..', 'pages/home/home.wxss'), 'utf8');
@@ -228,10 +231,17 @@ test('home recent Mahjong room uses the Mahjong action color', () => {
   assert.match(wxss, /\.mahjong-enter\s*\{[^}]*color:\s*#347258/);
 });
 
+test('home places poker tools first and groups recent rooms under Mahjong', () => {
+  const wxml = fs.readFileSync(path.resolve(__dirname, '..', 'pages/home/home.wxml'), 'utf8');
+  assert.ok(wxml.indexOf('class="entry-section poker-section"') < wxml.indexOf('class="entry-section mahjong-section"'));
+  const mahjongSection = wxml.match(/<view class="entry-section mahjong-section">[\s\S]*?<\/view>\s*<\/view>/)?.[0] || '';
+  assert.match(mahjongSection, /class="recent-section"/);
+});
+
 test('bottom navigation is compact and clearly separated from page content', () => {
   const wxss = fs.readFileSync(path.resolve(__dirname, '..', 'custom-tab-bar/index.wxss'), 'utf8');
   assert.match(wxss, /\.tab-bar\s*\{[^}]*height:\s*96rpx/);
-  assert.match(wxss, /border-top:\s*2rpx\s+solid\s+#D8E0DA/);
+  assert.match(wxss, /border-top:\s*2rpx\s+solid\s+#E8DED4/);
   assert.match(wxss, /box-shadow:/);
 });
 
@@ -252,8 +262,25 @@ test('an active Mahjong room uses lightweight revision checks without a permanen
   assert.doesNotMatch(roomSource, /wx\.cloud\.database/);
 });
 
-test('poker mutation routes resolve to Cloud Function actions', async () => {
+
+test('retired poker routes fail without sending a cloud request', async () => {
   const { app, functionCalls } = loadApp();
-  await app.request({ path: '/api/mini/poker/ledgers/ABC123/games', method: 'POST', data: { gameDate: '2026-09-08', players: [] } });
-  assert.equal(functionCalls[0].data.action, 'createPokerGame');
+  for (const path of ['/api/mini/poker/ledgers', '/api/mini/poker/ledgers/ABC123/games', '/api/mini/me/poker-ledgers']) {
+    await assert.rejects(() => app.request({ path, method: 'POST' }), /没有对应的云函数操作/);
+  }
+  assert.equal(functionCalls.length, 0);
+});
+
+test('poker ledger page and entries are removed while insurance remains accessible', () => {
+  const root = path.resolve(__dirname, '..');
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
+  assert.equal(config.pages.includes('pages/poker/poker'), false);
+  assert.equal(fs.existsSync(path.join(root, 'pages/poker/poker.js')), false);
+  assert.equal(config.pages.includes('insurance-module/pages/insurance/index'), true);
+  for (const page of ['home', 'profile', 'history', 'operations']) {
+    const wxml = fs.readFileSync(path.join(root, 'pages', page, page + '.wxml'), 'utf8');
+    assert.doesNotMatch(wxml, /扑克账本|创建账本|最近账本|历史扑克|openPoker|pokerLedgers/);
+  }
+  const home = fs.readFileSync(path.join(root, 'pages/home/home.wxml'), 'utf8');
+  assert.match(home, /bindtap="openInsurance"/);
 });

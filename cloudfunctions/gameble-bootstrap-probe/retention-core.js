@@ -8,6 +8,7 @@ const {
 } = require('./mahjong-core');
 
 const RETENTION_MONTHS = 6;
+const { parseHistory } = require('./poker-history');
 const RETENTION_LOCK = 'gameble_score_retention_cleanup';
 // The personal Cloud Function tier is limited to three seconds. Keep the
 // daily work small and let subsequent runs drain a historical backlog.
@@ -31,6 +32,9 @@ async function withTransaction(connection, work) {
 }
 
 function latestCreatedAt(rows) {
+  if (!rows.length || rows.some((row) => !row.createdAt || Number.isNaN(new Date(row.createdAt).getTime()))) {
+    throw new Error('Cannot archive records without a valid creation time');
+  }
   return rows.reduce((latest, row) => {
     const value = new Date(row.createdAt);
     return Number.isNaN(value.getTime()) || value <= latest ? latest : value;
@@ -90,24 +94,9 @@ function automaticFee(row) {
   return 0;
 }
 
-async function upsertPokerSnapshots(connection, totals, archivedThrough) {
-  for (const total of totals.values()) {
-    await connection.execute(
-      `INSERT INTO poker_ledger_snapshots
-        (room_id, user_id, net_profit, game_count, archived_through)
-       VALUES (?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         net_profit = net_profit + VALUES(net_profit),
-         game_count = game_count + VALUES(game_count),
-         archived_through = GREATEST(archived_through, VALUES(archived_through))`,
-      [total.roomId, total.userId, centsToAmount(total.netCents), total.gameCount, archivedThrough],
-    );
-  }
-}
-
 async function cleanupPoker(connection, cutoff, batchSize) {
   const [games] = await connection.execute(
-    `SELECT g.id, g.room_id AS roomId, o.user_id AS userId, o.self_player_id AS selfPlayerId
+    `SELECT g.id, g.created_at AS createdAt, g.room_id AS roomId, o.user_id AS userId
        FROM games AS g INNER JOIN poker_ledger_owners AS o ON o.room_id = g.room_id
       WHERE g.created_at < ? ORDER BY g.created_at ASC, g.id ASC LIMIT ? FOR UPDATE`,
     [cutoff, batchSize],
@@ -116,20 +105,46 @@ async function cleanupPoker(connection, cutoff, batchSize) {
 
   const gameIds = games.map((game) => game.id);
   const [players] = await connection.execute(
-    `SELECT game_id AS gameId, player_id AS playerId, net_profit AS netProfit
+    `SELECT game_id AS gameId, player_id AS playerId, buy_in AS buyIn, net_profit AS netProfit
        FROM game_players WHERE game_id IN (${placeholders(gameIds)})`, gameIds,
   );
   const gameById = new Map(games.map((game) => [game.id, game]));
   const totals = new Map();
+  for (const game of games) {
+    if (!totals.has(game.roomId)) {
+      const [[snapshot]] = await connection.execute(
+        'SELECT aggregates_json AS aggregatesJson FROM poker_ledger_snapshots WHERE room_id = ? FOR UPDATE', [game.roomId],
+      );
+      totals.set(game.roomId, { userId: game.userId, history: parseHistory(snapshot?.aggregatesJson), games: [] });
+    }
+    const total = totals.get(game.roomId);
+    total.history.gameCount += 1;
+    total.games.push(game);
+  }
   for (const player of players) {
     const game = gameById.get(player.gameId);
-    if (!game || !game.selfPlayerId || game.selfPlayerId !== player.playerId) continue;
-    const total = totals.get(game.roomId) || { roomId: game.roomId, userId: game.userId, netCents: 0, gameCount: 0 };
-    total.netCents += amountToCents(player.netProfit);
+    if (!game) throw new Error('Missing archived game');
+    const history = totals.get(game.roomId).history;
+    const total = history.players[player.playerId] || { netCents: 0, winCents: 0, lossCents: 0, buyInCents: 0, gameCount: 0 };
+    const net = amountToCents(player.netProfit);
+    total.netCents += net;
+    total.winCents += Math.max(0, net);
+    total.lossCents += Math.max(0, -net);
+    total.buyInCents += amountToCents(player.buyIn);
     total.gameCount += 1;
-    totals.set(game.roomId, total);
+    history.buyInCents += amountToCents(player.buyIn);
+    history.players[player.playerId] = total;
   }
-  await upsertPokerSnapshots(connection, totals, latestCreatedAt(games));
+  for (const [roomId, total] of totals) {
+    parseHistory(total.history);
+    await connection.execute(
+      `INSERT INTO poker_ledger_snapshots (room_id, user_id, aggregates_json, archived_through)
+       VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE
+       aggregates_json = VALUES(aggregates_json),
+       archived_through = GREATEST(archived_through, VALUES(archived_through))`,
+      [roomId, total.userId, JSON.stringify(total.history), latestCreatedAt(total.games)],
+    );
+  }
   await connection.execute(`DELETE FROM games WHERE id IN (${placeholders(gameIds)})`, gameIds);
   return games.length;
 }
@@ -261,4 +276,4 @@ async function runRetentionCleanup(connection, options = {}) {
   }
 }
 
-module.exports = { runRetentionCleanup, cleanupMahjong };
+module.exports = { runRetentionCleanup, cleanupMahjong, cleanupPoker, latestCreatedAt };

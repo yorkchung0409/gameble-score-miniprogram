@@ -1,4 +1,9 @@
+<page-meta page-style="{{guideOpen ? 'overflow: hidden;' : ''}}" />
 <view class="page">
+  <view class="home-heading">
+    <text class="home-eyebrow">打牌记分房</text>
+    <text class="home-subtitle">麻将记分 · 个人记账 · 保险计算</text>
+  </view>
   <view class="page-toolbar">
     <button class="guide-button" bindtap="openGuide" aria-label="使用说明">
       <text class="guide-label">说明</text>
@@ -15,41 +20,35 @@
     <text class="service-status-note">点击重新连接</text>
   </view>
 
-  <view class="entry-section">
+  <view class="entry-section poker-section">
+    <view class="entry-meta"><text class="entry-symbol">♠</text><text class="entry-caption">记录个人成绩，辅助保险计算。</text></view>
+    <text class="section-heading">扑克工具</text>
+    <view class="entry-actions">
+    <button class="action-button poker-button" bindtap="openBookkeeping">个人记账</button>
+    <button class="action-button insurance-button" bindtap="openInsurance">保险</button>
+    </view>
+  </view>
+
+  <view class="entry-section mahjong-section">
+    <view class="entry-meta"><text class="entry-symbol">麻</text><text class="entry-caption">创建房间，邀请牌友一起记录。</text></view>
     <text class="section-heading">麻将记分</text>
+    <view class="entry-actions">
     <button class="action-button mahjong-button" loading="{{creatingMahjong}}" disabled="{{creatingMahjong || serviceStarting}}" bindtap="openMahjongCreate">创建房间</button>
     <button class="action-button secondary-action" disabled="{{serviceStarting}}" bindtap="openMahjongJoin">加入房间</button>
+    </view>
+    <view wx:if="{{recentLoaded}}" class="recent-section">
+      <view class="recent-heading">
+        <text class="recent-title">最近进入</text>
+        <text class="recent-more" data-type="mahjong" bindtap="openRecentHistory">更多</text>
+      </view>
+      <view wx:if="{{recentMahjongRoom}}" class="recent-row" data-code="{{recentMahjongRoom.roomCode}}" bindtap="openRecentMahjong">
+        <text class="recent-name">房间 {{recentMahjongRoom.roomCode}}</text>
+        <text class="recent-enter mahjong-enter">进入</text>
+      </view>
+      <text wx:else class="recent-empty">暂无活跃房间</text>
+    </view>
   </view>
 
-  <view class="entry-section poker-section">
-    <text class="section-heading">扑克记账</text>
-    <button class="action-button poker-button" disabled="{{serviceStarting}}" bindtap="openPokerCreate">创建账本</button>
-    <button class="action-button insurance-button" bindtap="openInsurance">保险</button>
-  </view>
-
-  <view wx:if="{{recentLoaded}}" class="recent-section">
-    <view class="recent-heading">
-      <text class="recent-title">最近房间</text>
-      <text class="recent-more" data-type="mahjong" bindtap="openRecentHistory">更多</text>
-    </view>
-    <view wx:if="{{recentMahjongRoom}}" class="recent-row" data-code="{{recentMahjongRoom.roomCode}}" bindtap="openRecentMahjong">
-      <text class="recent-name">房间 {{recentMahjongRoom.roomCode}}</text>
-      <text class="recent-enter mahjong-enter">进入</text>
-    </view>
-    <text wx:else class="recent-empty">暂无活跃房间</text>
-  </view>
-
-  <view wx:if="{{recentLoaded}}" class="recent-section recent-ledger-section">
-    <view class="recent-heading">
-      <text class="recent-title">最近账本</text>
-      <text class="recent-more" data-type="poker" bindtap="openRecentHistory">更多</text>
-    </view>
-    <view wx:if="{{recentPokerLedger}}" class="recent-row" data-code="{{recentPokerLedger.room.roomCode}}" bindtap="openRecentPoker">
-      <text class="recent-name">{{recentPokerLedger.room.roomName}}</text>
-      <text class="recent-enter">进入</text>
-    </view>
-    <text wx:else class="recent-empty">暂无账本</text>
-  </view>
 </view>
 
 <view wx:if="{{showMahjongJoin}}" class="sheet-mask" bindtap="closeMahjongJoin">
@@ -63,56 +62,50 @@
   </view>
 </view>
 
-<view wx:if="{{showPokerCreate}}" class="sheet-mask" bindtap="closePokerCreate">
-  <view class="action-sheet" catchtap="preventSheetClose">
-    <text class="sheet-title">创建账本</text>
-    <input value="{{pokerLedgerName}}" bindinput="onPokerLedgerNameInput" placeholder="账本名称" class="sheet-input" maxlength="50" />
-    <view class="sheet-actions">
-      <button class="sheet-cancel" bindtap="closePokerCreate">取消</button>
-      <button class="sheet-confirm poker-button" loading="{{creatingPoker}}" disabled="{{creatingPoker}}" bindtap="createPokerLedger">创建账本</button>
-    </view>
-  </view>
-</view>
-
-<view wx:if="{{guideOpen}}" class="guide-mask" bindtap="closeGuide">
+<view wx:if="{{guideOpen}}" class="guide-mask" bindtap="closeGuide" catchtouchmove="preventGuideClose">
   <view class="guide-modal" catchtap="preventGuideClose">
     <view class="guide-header">
       <text class="guide-dialog-title">使用说明</text>
       <button class="guide-close" bindtap="closeGuide" aria-label="关闭使用说明">×</button>
     </view>
     <scroll-view class="guide-body" scroll-y>
+      <view class="guide-content">
       <view class="guide-intro">
-        <text class="guide-intro-text">谢谢您的支持，打牌记分房是一个牌局记账工具。辅助您记录牌局中各位玩家的分数变化，是一个辅助性记账工具。</text>
+        <text class="guide-intro-text">打牌记分房提供麻将记分、个人扑克记账和保险计算。</text>
         <text class="guide-intro-warning">小程序中不涉及任何金钱操作，小程序内所有的“转账”字眼仅作为记账描述，不会直接操作您的微信钱包或任何您的个人资产。禁止将小程序用于违法行为，一经发现或举报，我司有权封禁您小程序账号，请自觉遵守中华人民共和国法律法规。</text>
       </view>
       <view class="guide-section">
-        <text class="guide-section-title">麻将</text>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>创建房间后会自动生成房间码，可复制给其他人加入。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>进入房间即成为成员，点头像可互相转账；茶水费为虚拟账户。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>房主可在普通、坐下模式间切换；坐下模式需四家入座，切换时按提示入座或离座。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>转错账只能冲正自己付款的记录；30 分钟无转账会自动解散，账目仍会归档。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>退出只离开本局，可再次进入，历史余额会自动接上。</text></view>
+        <text class="guide-section-title">麻将记分</text>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>创建房间后，将房间码发给牌友，对方可通过“加入房间”进入。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>点击成员头像记录积分转移；茶水费账户用于单独记录茶水费。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>普通模式可直接记分；坐下模式需先入座。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>记错时，可冲正自己付款的记录。退出后再次进入，原有记录和余额仍会保留。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>房间连续 30 分钟没有转账会自动结束，可在“我的”查看历史成绩。</text></view>
       </view>
 
       <view class="guide-section">
-        <text class="guide-section-title">扑克</text>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>账本是创建者个人使用的记账本，不与他人协作。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>记录玩家买入和结余即可自动计算净盈亏；历史可查看日期、人数和明细。</text></view>
+        <text class="guide-section-title">个人扑克记账</text>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>点击“记一笔”，选择赢或输，输入本场积分；平局填 0。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>盲注和标签支持快捷选择，点击“管理”可添加或删除选项。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>记录仅本人可见，同一微信账号可跨设备同步。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>支持 JSON 备份导入与导出。导入前先预览，确认后合并：重复记录跳过，冲突记录保留小程序中的版本。CSV 为追加导入，重复导入可能产生重复记录。</text></view>
       </view>
 
       <view class="guide-section">
-        <text class="guide-section-title">保险</text>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>保险用于辅助估算德州扑克转牌、河牌的保险买入与结算，不会产生真实资金交易。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>未录入完整牌局时，可拖动或点击选择 outs 和赔率进行预览；填写公共牌、手牌及底池后，点击“按当前牌局计算”查看真实牌面结果。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>可先选择预设购买人并填写买入金额；点击计算后，买入会带入该玩家的主底池，真实 outs 和赔率以牌面计算为准。</text></view>
-        <view class="guide-item"><text class="guide-bullet">·</text><text>转牌和河牌保险独立计算；牌局、预设和保险配置仅保存在当前设备。</text></view>
+        <text class="guide-section-title">保险计算</text>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>录入公共牌、各玩家手牌、底池和投入，点击“按当前牌局计算”；牌面未完整时，可用滑条预览。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>点击 outs 张数，按花、顺、高张等类型或单张选择要保的反超牌，再点“确认应用”。重复牌只算一次，赔率和买入上限自动更新。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>买入金额可手动填写或使用快捷比例，超过上限会自动限制。“赔率配置”支持自定义和切换；点击“自动”恢复全部真实 outs。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>转牌保险看前三张公共牌，河牌保险看四张；发牌后上一街冻结。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>已购买的 out 命中，计算保险赔付；未购买的 out 命中，仍会损失投入和已付保险费。转牌终局不扣河牌预填金额。</text></view>
+        <view class="guide-item"><text class="guide-bullet">·</text><text>保险牌局、买入预设和赔率配置只保存在当前设备。</text></view>
       </view>
 
       <view class="guide-section guide-section-last">
-        <text class="guide-section-title guide-section-title-common">通用</text>
-        <view class="guide-item"><text class="guide-bullet guide-bullet-common">·</text><text>麻将房数据保存在云端，成员实时同步；更换设备后使用同一微信即可同步。</text></view>
-        <view class="guide-item"><text class="guide-bullet guide-bullet-common">·</text><text>历史房间、账本和个人战绩可在“我的”查看。</text></view>
-        <view class="guide-item"><text class="guide-bullet guide-bullet-common">·</text><text>牌局明细保留 6 个月；超过后会清理明细，但清理前会保存汇总快照，历史总输赢不会受影响。</text></view>
+        <text class="guide-section-title guide-section-title-common">数据保存</text>
+        <view class="guide-item"><text class="guide-bullet guide-bullet-common">·</text><text>麻将和个人扑克记账保存在云端，同一微信账号可跨设备查看。</text></view>
+        <view class="guide-item"><text class="guide-bullet guide-bullet-common">·</text><text>麻将明细保留六个月，清理前会保存汇总，历史总输赢仍会保留；个人扑克记账不参加这项清理。</text></view>
+      </view>
       </view>
     </scroll-view>
   </view>

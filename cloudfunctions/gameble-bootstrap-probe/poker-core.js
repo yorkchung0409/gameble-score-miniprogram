@@ -5,6 +5,7 @@ const { CoreError, requireUser, centsToAmount, amountToCents } = require('./mahj
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
+const { parseHistory } = require('./poker-history');
 
 function asIso(value) {
   if (!value) return null;
@@ -89,6 +90,10 @@ function placeholders(values) {
 
 async function getPokerDetail(connection, userId, input) {
   const owner = await getOwner(connection, userId, input.roomCode);
+  const [[snapshot]] = await connection.execute(
+    'SELECT net_profit AS netProfit, game_count AS gameCount, aggregates_json AS aggregatesJson FROM poker_ledger_snapshots WHERE room_id = ?', [owner.id],
+  );
+  const history = parseHistory(snapshot?.aggregatesJson);
   const page = normalizePage(input);
   const [playerRows] = await connection.execute(
     'SELECT id, room_id AS roomId, name FROM players WHERE room_id = ? ORDER BY name',
@@ -137,15 +142,17 @@ async function getPokerDetail(connection, userId, input) {
   const [leaderboardRows] = await connection.execute(
     `SELECT p.id AS playerId, p.name AS playerName, COALESCE(SUM(gp.net_profit), 0) AS netProfit,
             COALESCE(SUM(CASE WHEN gp.net_profit > 0 THEN gp.net_profit ELSE 0 END), 0) AS winTotal,
-            COALESCE(SUM(CASE WHEN gp.net_profit < 0 THEN -gp.net_profit ELSE 0 END), 0) AS lossTotal
+            COALESCE(SUM(CASE WHEN gp.net_profit < 0 THEN -gp.net_profit ELSE 0 END), 0) AS lossTotal,
+            COUNT(gp.id) AS gameCount
        FROM players AS p LEFT JOIN game_players AS gp ON gp.player_id = p.id
       WHERE p.room_id = ? GROUP BY p.id, p.name`, [owner.id],
   );
   const leaderboard = leaderboardRows.map((row) => ({
     ...row,
-    netProfit: centsToAmount(amountToCents(row.netProfit)),
-    winTotal: centsToAmount(amountToCents(row.winTotal)),
-    lossTotal: centsToAmount(amountToCents(row.lossTotal)),
+    gameCount: Number(row.gameCount || 0) + (history.players[row.playerId]?.gameCount || 0),
+    netProfit: centsToAmount(amountToCents(row.netProfit) + (history.players[row.playerId]?.netCents || 0)),
+    winTotal: centsToAmount(amountToCents(row.winTotal) + (history.players[row.playerId]?.winCents || 0)),
+    lossTotal: centsToAmount(amountToCents(row.lossTotal) + (history.players[row.playerId]?.lossCents || 0)),
   })).sort((left, right) => amountToCents(right.netProfit) - amountToCents(left.netProfit) || left.playerName.localeCompare(right.playerName, 'zh-CN'));
   const total = Number(countRow.total || 0);
   return {
@@ -154,9 +161,11 @@ async function getPokerDetail(connection, userId, input) {
     games,
     leaderboard,
     selfPlayerId: owner.selfPlayerId || null,
+    historyWarning: Number(snapshot?.gameCount || 0) > 0
+      ? '部分旧记录仅保留个人总输赢，无法还原完整场次、买入和其他玩家排行；个人汇总仍保留这部分记录。' : '',
     stats: {
-      totalGames: total,
-      totalBuyIn: centsToAmount(amountToCents(buyInRow.total)),
+      totalGames: total + history.gameCount,
+      totalBuyIn: centsToAmount(amountToCents(buyInRow.total) + history.buyInCents),
       latestGameBalanceDiff: centsToAmount(latestBalanceDifference),
       latestGameTurnover: centsToAmount(latestTurnover),
     },
@@ -211,6 +220,12 @@ async function updatePokerSettings(connection, userId, input) {
   const owner = await getOwner(connection, userId, input.roomCode);
   const roomName = normalizeText(input.roomName, '账本名称', 50);
   const selfPlayerId = input.selfPlayerId || null;
+  if (selfPlayerId !== (owner.selfPlayerId || null)) {
+    const [[legacy]] = await connection.execute('SELECT game_count AS gameCount FROM poker_ledger_snapshots WHERE room_id = ?', [owner.id]);
+    if (Number(legacy?.gameCount || 0) > 0) {
+      throw new CoreError('该账本有旧版历史汇总，无法安全更换本人；请新建账本记录其他玩家', 'CONFLICT');
+    }
+  }
   if (selfPlayerId) {
     const [rows] = await connection.execute('SELECT id FROM players WHERE id = ? AND room_id = ? LIMIT 1', [selfPlayerId, owner.id]);
     if (!rows[0]) throw new CoreError('本人玩家不属于该账本');
@@ -239,6 +254,10 @@ async function deletePokerPlayer(connection, userId, input) {
   if (!players[0]) throw new CoreError('人员不存在', 'NOT_FOUND');
   const [history] = await connection.execute('SELECT id FROM game_players WHERE player_id = ? LIMIT 1', [input.playerId]);
   if (history[0]) throw new CoreError('该人员已有历史牌局记录，无法删除');
+  const [[snapshot]] = await connection.execute('SELECT game_count AS gameCount, aggregates_json AS aggregatesJson FROM poker_ledger_snapshots WHERE room_id = ?', [owner.id]);
+  if (Number(snapshot?.gameCount || 0) > 0 || parseHistory(snapshot?.aggregatesJson).players[input.playerId]?.gameCount > 0) {
+    throw new CoreError('该人员已有归档牌局记录，无法删除');
+  }
   await connection.execute('DELETE FROM players WHERE id = ? AND room_id = ?', [input.playerId, owner.id]);
   await touchRoom(connection, owner.id);
   return {};

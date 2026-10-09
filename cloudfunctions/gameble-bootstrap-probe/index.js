@@ -3,8 +3,8 @@
 const cloud = require('wx-server-sdk');
 const mysql = require('mysql2/promise');
 const { CoreError, dispatchMahjongAction, loadRecentActivity } = require('./mahjong-core');
-const { dispatchPokerAction } = require('./poker-core');
 const { dispatchProfileAction } = require('./profile-core');
+const { dispatchBookkeepingAction } = require('./bookkeeping-core');
 const { runRetentionCleanup } = require('./retention-core');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
@@ -48,11 +48,20 @@ function getPool() {
 exports.main = async (event = {}) => {
   const startedAt = Date.now();
   try {
-    const { OPENID: openId } = cloud.getWXContext();
+    const { OPENID: openId, SOURCE: source } = cloud.getWXContext();
+    const isTimerEvent = event?.Type === 'Timer' || event?.type === 'timer';
+    // SOURCE is injected by WeChat, not supplied in the client payload.
+    if (isTimerEvent && (source !== 'wx_trigger' || openId || event.TriggerName !== 'dailyRetentionCleanup')) {
+      throw new CoreError('禁止从客户端调用历史清理', 'FORBIDDEN');
+    }
+    if (!isTimerEvent && !openId) throw new CoreError('Missing WeChat OpenID.', 'FORBIDDEN');
+
+    if (String(event.action || '').includes('Poker')) {
+      throw new CoreError('扑克账本已下线', 'UNSUPPORTED_ACTION');
+    }
 
     const connection = await getPool().getConnection();
     try {
-      const isTimerEvent = event?.Type === 'Timer' || event?.type === 'timer';
       if (isTimerEvent) {
         const retention = await runRetentionCleanup(connection);
         return {
@@ -66,8 +75,8 @@ exports.main = async (event = {}) => {
       const action = String(event?.action || 'bootstrap');
       const result = action.startsWith('getPersonal') || action === 'getMahjongOpponents' || action === 'getOperationsOverview'
         ? await dispatchProfileAction(connection, openId, event)
-        : action.includes('Poker')
-          ? await dispatchPokerAction(connection, openId, event)
+        : action === 'getBookkeeping' || action === 'saveBookkeeping'
+          ? await dispatchBookkeepingAction(connection, openId, event)
           : await dispatchMahjongAction(connection, openId, event);
       return {
         ok: true,

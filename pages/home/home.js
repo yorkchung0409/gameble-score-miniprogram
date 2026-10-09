@@ -35,17 +35,13 @@ Page({
     guideOpen: false,
     user: null,
     showMahjongJoin: false,
-    showPokerCreate: false,
     mahjongJoinCode: '',
     creatingMahjong: false,
     joiningMahjong: false,
-    pokerLedgerName: '我的账本',
-    creatingPoker: false,
     serviceStarting: true,
     serviceStartError: '',
     recentLoaded: false,
     recentMahjongRoom: null,
-    recentPokerLedger: null,
   },
 
   onShareAppMessage() {
@@ -65,10 +61,12 @@ Page({
   },
 
   async onShow() {
+    const wasShown = this.homeShown;
+    this.homeShown = true;
     const tabBar = this.getTabBar?.();
     if (tabBar) tabBar.setData({ selected: 0 });
     this.setTabBarVisible(
-      !this.data.showMahjongJoin && !this.data.showPokerCreate,
+      !this.data.showMahjongJoin,
     );
     if (!app.globalData.user) {
       this.functionBootstrapLoaded = await this.loadBootstrapActivity();
@@ -77,7 +75,13 @@ Page({
       return;
     }
     this.setData({ user: app.globalData.user });
-    if (!this.functionBootstrapLoaded && !this.data.recentLoaded) {
+    if (wasShown) {
+      // A room joined or opened from another page can become the newest room
+      // while this page is hidden. Bootstrap is the lightweight source for
+      // the latest membership order, so refresh it when the page reappears.
+      this.functionBootstrapLoaded = await this.loadBootstrapActivity();
+      if (!this.functionBootstrapLoaded) await this.loadRecentActivity({ force: true });
+    } else if (!this.functionBootstrapLoaded && !this.data.recentLoaded) {
       await this.loadRecentActivity();
     }
   },
@@ -112,7 +116,6 @@ Page({
       const result = await app.getRecentActivity(options);
       this.setData({
         recentLoaded: true,
-        recentPokerLedger: result.pokerLedgers?.[0] || null,
         recentMahjongRoom: result.mahjongRooms?.[0] || null,
       });
     } catch {
@@ -128,7 +131,6 @@ Page({
       if (!result) return false;
       this.setData({
         recentLoaded: true,
-        recentPokerLedger: result.pokerLedgers[0] || null,
         recentMahjongRoom: result.mahjongRooms[0] || null,
       });
       return true;
@@ -185,30 +187,16 @@ Page({
     this.setTabBarVisible(true);
   },
 
-  openPokerCreate() {
-    this.setData({ showPokerCreate: true });
-    this.setTabBarVisible(false);
-  },
-
   openInsurance() {
     wx.navigateTo({ url: '/insurance-module/pages/insurance/index' });
   },
 
-  closePokerCreate() {
-    this.setData({ showPokerCreate: false });
-    this.setTabBarVisible(true);
+  openBookkeeping() {
+    wx.navigateTo({ url: '/bookkeeping-module/pages/bookkeeping/index' });
   },
 
-  openRecentHistory(event) {
-    const type = event.currentTarget.dataset.type;
-    if (type === 'poker' || type === 'mahjong') {
-      wx.navigateTo({ url: `/pages/history/history?type=${type}` });
-    }
-  },
-
-  openRecentPoker(event) {
-    const roomCode = event.currentTarget.dataset.code;
-    if (roomCode) wx.navigateTo({ url: `/pages/poker/poker?roomCode=${roomCode}` });
+  openRecentHistory() {
+    wx.navigateTo({ url: '/pages/history/history' });
   },
 
   openRecentMahjong(event) {
@@ -220,10 +208,6 @@ Page({
 
   onMahjongJoinCodeInput(event) {
     this.setData({ mahjongJoinCode: event.detail.value });
-  },
-
-  onPokerLedgerNameInput(event) {
-    this.setData({ pokerLedgerName: event.detail.value });
   },
 
   async createMahjongRoom() {
@@ -279,39 +263,4 @@ Page({
     });
   },
 
-  async createPokerLedger() {
-    if (this.data.creatingPoker) return;
-    const roomName = this.data.pokerLedgerName.trim();
-    if (!roomName) {
-      wx.showToast({ title: '请填写账本名称', icon: 'none' });
-      return;
-    }
-
-    this.setData({ creatingPoker: true });
-    const operationId = this.pokerCreateOperationId || (this.pokerCreateOperationId = createOperationId('poker_ledger'));
-    try {
-      await app.login();
-      const result = await app.request({
-        path: '/api/mini/poker/ledgers',
-        method: 'POST',
-        data: { roomName, operationId },
-      });
-      this.closePokerCreate();
-      wx.navigateTo({
-        url: `/pages/poker/poker?roomCode=${result.room.roomCode}`,
-        fail: () => {
-          this.setData({
-            recentLoaded: true,
-            recentPokerLedger: { room: result.room },
-          });
-          wx.showToast({ title: '暂时无法打开账本', icon: 'none' });
-        },
-        success: () => { this.pokerCreateOperationId = ''; },
-      });
-    } catch (error) {
-      wx.showToast({ title: error.message || '创建账本失败', icon: 'none' });
-    } finally {
-      this.setData({ creatingPoker: false });
-    }
-  },
 });

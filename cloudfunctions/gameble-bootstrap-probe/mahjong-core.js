@@ -666,9 +666,14 @@ async function createTransaction(connection, openId, input) {
   await inTransaction(connection, async () => {
     const room = await ensureActiveRoom(connection, roomCode, true);
     if (operationId) {
-      const [previous] = await connection.execute('SELECT room_id AS roomId, payer_id AS payerId FROM mahjong_transactions WHERE operation_id = ? LIMIT 1 FOR UPDATE', [operationId]);
+      const [previous] = await connection.execute('SELECT room_id AS roomId, payer_id AS payerId, payee_type AS payeeType, payee_id AS payeeId, amount, remark FROM mahjong_transactions WHERE operation_id = ? LIMIT 1 FOR UPDATE', [operationId]);
       if (previous[0]) {
-        if (previous[0].roomId === room.id && previous[0].payerId === user.id) return;
+        const saved = previous[0];
+        if (saved.roomId === room.id && saved.payerId === user.id) {
+          if (saved.payeeType === payeeType && (saved.payeeId || null) === payeeId
+            && amountToCents(saved.amount) === amountCents && (saved.remark || '') === (remark || '')) return;
+          throw new CoreError('上次转账已保存，但本次内容不同。请关闭弹窗核对记录，再发起新转账', 'CONFLICT');
+        }
         throw new CoreError('操作号已被使用', 'CONFLICT');
       }
     }
@@ -786,28 +791,16 @@ async function dispatchMahjongAction(connection, openId, event) {
 
 async function loadRecentActivity(connection, openId) {
   const user = await findUserByOpenId(connection, openId);
-  if (!user) return { mahjongRooms: [], pokerLedgers: [] };
+  if (!user) return { mahjongRooms: [] };
   await archiveIdleRoomsForUser(connection, user.id);
-  const [[mahjongRows], [pokerRows]] = await Promise.all([
-    connection.execute(
+  const [mahjongRows] = await connection.execute(
       `SELECT r.id, r.room_code AS roomCode, r.name, r.mode, r.creator_user_id AS creatorUserId,
               r.created_at AS createdAt, r.dissolved_at AS dissolvedAt
          FROM mahjong_room_members AS member_row INNER JOIN mahjong_rooms AS r ON r.id = member_row.room_id
         WHERE member_row.user_id = ? ORDER BY member_row.joined_at DESC, r.created_at DESC, r.id DESC LIMIT 1`, [user.id],
-    ),
-    connection.execute(
-      `SELECT r.id, r.room_code AS roomCode, r.room_name AS roomName, r.game_type AS gameType,
-              r.created_at AS createdAt, r.updated_at AS updatedAt
-         FROM poker_ledger_owners AS owner_row INNER JOIN rooms AS r ON r.id = owner_row.room_id
-        WHERE owner_row.user_id = ? ORDER BY r.updated_at DESC LIMIT 1`, [user.id],
-    ),
-  ]);
+    );
   return {
     mahjongRooms: mahjongRows.map((row) => ({ ...toRoom(row, undefined), teaFeeRule: undefined })),
-    pokerLedgers: pokerRows.map((row) => ({ room: {
-      id: row.id, roomCode: row.roomCode, roomName: row.roomName, gameType: row.gameType,
-      createdAt: asIso(row.createdAt), updatedAt: asIso(row.updatedAt),
-    } })),
   };
 }
 

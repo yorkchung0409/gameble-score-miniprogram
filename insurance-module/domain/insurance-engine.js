@@ -5,7 +5,10 @@
  * contract between the mini-program pages and the poker calculation core.
  */
 const Core = require("../poker-core");
+const { maximumBuy } = require("./buy-amount");
 const HandAnalysis = require("../app-hand-analysis");
+const { classifyOuts, selectedCards } = require("./outs-selection");
+const { calculateSettlement } = require("./selective-settlement");
 
 const SCHEMA_VERSION = 1;
 const PLAYER_KEYS = ["A", "B", "C", "D"];
@@ -20,10 +23,31 @@ function asAmount(value) {
   return Number.isFinite(number) && number >= 0 ? number : 0;
 }
 
+function asRakeRate(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 && number <= 100 ? number : 0;
+}
+
+function rakedSidePots(inputs) {
+  const side = Core.buildSidePots(inputs.contributions || {}, PLAYER_KEYS);
+  const rate = asRakeRate(inputs.rakeRate);
+  const pots = side.pots.map(pot => {
+    // 扣水后的每个底池按十位四舍五入；差额归入该池的抽水金额。
+    const amount = rate > 0 ? Math.round((pot.amount * (100 - rate) / 100) / 10) * 10 : pot.amount;
+    return { ...pot, grossAmount: pot.amount, amount, rakeAmount: Number((pot.amount - amount).toFixed(2)) };
+  });
+  return { ...side, pots };
+}
+
+function rakeLocked(state) {
+  return state.poolMode === "multi" && Object.values(state.insuranceByPool || {}).some(buyers =>
+    Object.values(buyers || {}).some(record => STREET_NAMES.some(street => record[street] && record[street].status === "settled")));
+}
+
 function cappedStreetBuy(value, coverage, odds) {
   const multiplier = Number(odds);
   if (!Number.isFinite(multiplier) || multiplier <= 0) return 0;
-  return Math.min(asAmount(value), asAmount(coverage) / multiplier);
+  return Math.min(Math.ceil(asAmount(value)), maximumBuy(coverage, multiplier));
 }
 
 function boardPrefix(board) {
@@ -74,7 +98,9 @@ function handKey(stateLike) {
     coverage: asAmount(inputs.coverage),
     stake: asAmount(inputs.stake),
     contributions: inputs.contributions || {},
-    rankings: inputs.rankings || {}
+    rankings: inputs.rankings || {},
+    // Keep zero-rake branch keys compatible with existing local drafts.
+    ...(stateLike.poolMode === "multi" && asRakeRate(inputs.rakeRate) > 0 ? { rakeRate: asRakeRate(inputs.rakeRate) } : {})
   });
 }
 
@@ -123,8 +149,7 @@ function getPools(state, players) {
       stakeByPlayer: Object.fromEntries(players.map((player) => [player.key, asAmount(inputs.stake)]))
     }];
   }
-  const contributions = inputs.contributions || {};
-  const side = Core.buildSidePots(contributions, PLAYER_KEYS);
+  const side = rakedSidePots(inputs);
   return side.pots.map((pot) => ({ ...pot, id: stablePoolId(pot) }));
 }
 
@@ -152,26 +177,39 @@ function currentLeaders(state, board, players, pool) {
 function autoStreet(board, players, buyer, street, existing, participantKeys, options = {}) {
   const forceAuto = Boolean(options.forceAuto);
   const key = boardKey(board);
-  if (board.length >= 5) return existing && existing.status === "settled" ? existing : emptyStreet(key, "settled");
-  if (board.length >= 4 && street === "turn" && !existing) return emptyStreet(key, "notApplicable");
+  // Once the deciding card is known, only the pre-deal snapshot is valid.
+  // Recalculate/auto must never price turn insurance using four board cards,
+  // or river insurance using five, even for an existing notApplicable record.
+  if (existing && existing.status === "settled") return existing;
+  const decidingCardKnown = board.length >= (street === "turn" ? 4 : 5);
+  if (decidingCardKnown) return emptyStreet(key, "notApplicable");
   const analysis = Array.isArray(participantKeys)
     ? HandAnalysis.calculateParticipantOuts(board, players, participantKeys, buyer)
     : HandAnalysis.calculateHandOuts(board, players);
   const stat = analysis.stats && analysis.stats[buyer];
-  const outCards = Array.isArray(analysis.outCards)
+  const allOutCards = Array.isArray(analysis.outCards)
     ? analysis.outCards.slice()
     : stat && Array.isArray(stat.lossCards) ? stat.lossCards.slice() : [];
+  const keepSelection = !options.resetSelection && existing && existing.outsSource === "auto"
+    && existing.selectionApplied && existing.boardKey === key;
+  const outCards = keepSelection ? selectedCards(allOutCards, existing.outCards) : allOutCards.slice();
   const outs = Core.normalizedOuts(outCards.length, 0);
   const oddsOverride = forceAuto ? 0 : existing ? Core.validInsuranceOdds(existing.oddsOverride) : 0;
   const value = existing && existing.status === "settled" ? existing : {
     outs,
     outCards,
+    allOutCards,
+    outGroups: classifyOuts(board, players, participantKeys, buyer, allOutCards),
+    selectionApplied: Boolean(keepSelection),
     odds: oddsOverride || Core.oddsForOuts(outs),
     oddsOverride,
     // A recalculation owns outs and odds. The premium is a separate player decision.
     buy: existing ? asAmount(existing.buy) : 0,
     status: street === "river" && board.length === 3 ? "estimated" : "current",
     boardKey: key,
+    outsSource: "auto",
+    sourceBoard: board.slice(),
+    sourceHand: (players.find(player => player.key === buyer) || { cards: [] }).cards.slice(),
     source: "auto"
   };
   return value;
@@ -189,22 +227,30 @@ function applyAutomaticOuts(state, options = {}) {
     const poolState = {};
     const participantKeys = pool.eligible.slice();
     leaders.forEach((buyer) => {
+      const streetOptions = street => ({ ...options, resetSelection: Boolean(options.resetSelection
+        && (!options.poolId || options.poolId === pool.id && options.buyer === buyer && options.street === street)) });
       const previous = next.insuranceByPool[pool.id] && next.insuranceByPool[pool.id][buyer];
       const oldTurn = previous && previous.turn;
       const oldRiver = previous && previous.river;
-      const turn = board.length >= 4 && oldTurn
+      const turn = board.length >= 4 && oldTurn && !options.forceAuto
         ? oldTurn
-        : autoStreet(board, players, buyer, "turn", oldTurn, participantKeys, options);
-      const turnHitTerminal = turn.status === "settled" && turn.resolvedStatus === "hit";
+        : autoStreet(board, players, buyer, "turn", oldTurn, participantKeys, streetOptions("turn"));
+      const turnHitTerminal = turn.status === "settled" && ["hit", "uncovered"].includes(turn.resolvedStatus);
       poolState[buyer] = {
         coverage: asAmount(pool.amount) / Math.max(leaders.length, 1),
         turn,
         river: turnHitTerminal && !(oldRiver && oldRiver.status === "settled")
           ? emptyStreet(boardKey(board), "notApplicable")
-          : board.length >= 5 && oldRiver && oldRiver.status === "settled"
+          : board.length >= 5 && oldRiver && oldRiver.status === "settled" && !options.forceAuto
             ? oldRiver
-            : autoStreet(board, players, buyer, "river", oldRiver, participantKeys, options)
+            : autoStreet(board, players, buyer, "river", oldRiver, participantKeys, streetOptions("river"))
       };
+    });
+    Object.values(poolState).forEach((record) => {
+      STREET_NAMES.forEach((street) => {
+        const value = record[street];
+        if (value && value.status !== "settled") value.buy = cappedStreetBuy(value.buy, record.coverage, value.odds);
+      });
     });
     const previousPool = next.insuranceByPool[pool.id] || {};
     Object.keys(previousPool).forEach((buyer) => {
@@ -254,10 +300,14 @@ function createRound(input = {}) {
     schemaVersion: SCHEMA_VERSION,
     branchId: 1,
     poolMode: input.poolMode === "multi" ? "multi" : "single",
+    oddsConfig: Array.isArray(input.oddsConfig) && input.oddsConfig.length === Core.ODDS.length
+      ? input.oddsConfig.map((value, index) => Number(value) > 0 ? Number(value) : Core.ODDS[index])
+      : Core.ODDS.slice(),
     table,
     inputs: {
       coverage: asAmount(input.coverage),
       stake: asAmount(input.stake),
+      rakeRate: asRakeRate(input.rakeRate),
       contributions: { ...(input.contributions || {}) },
       rankings: { ...(input.rankings || {}) }
     },
@@ -282,13 +332,13 @@ function snapshotHistory(state, street, resolvedCard, sourceBoardKey) {
       const value = record && record[street];
       if (!value || value.status === "notApplicable") return;
       const hasOutCards = Array.isArray(value.outCards) && value.outCards.length > 0;
-      const resolvedStatus = value.status === "hit" || value.status === "safe"
+      const resolvedStatus = ["hit", "safe", "uncovered"].includes(value.status)
         ? value.status
-        : value.source === "manual" && !hasOutCards
+        : value.source === "manual" && !hasOutCards && !Array.isArray(value.allOutCards)
           ? "needsConfirm"
           : hasOutCards && value.outCards.includes(resolvedCard)
             ? "hit"
-            : "safe";
+            : Array.isArray(value.allOutCards) && value.allOutCards.includes(resolvedCard) ? "uncovered" : "safe";
       const snapshot = { ...clone(value), status: "settled", boardKey: key, resolvedStatus };
       next.round.history.push({ poolId, buyer, street, boardKey: key, snapshot: clone(snapshot) });
       record[street] = { ...snapshot, status: "settled" };
@@ -351,6 +401,31 @@ function reduceRound(state, action = {}) {
   const current = state && typeof state === "object" ? state : createRound();
   const type = action.type;
   if (type === "RESET") return createRound();
+  if (type === "SET_PLAYER_CARDS" || type === "SET_BOARD_CARDS") {
+    const isBoard = type === "SET_BOARD_CARDS";
+    if (!Array.isArray(action.cards) || action.cards.length > (isBoard ? 5 : 2)) return { ...current, error: "invalid-card" };
+    const parsed = action.cards.map((card) => Core.parseCard(card));
+    if (parsed.some((card) => !card)) return { ...current, error: "invalid-card" };
+    const cards = parsed.map((card) => card.value);
+    const table = clone(current.table);
+    if (isBoard) table.board = normalizeBoard(cards);
+    else {
+      const player = table.players.find((item) => item.key === String(action.player));
+      if (!player) return { ...current, error: "unknown-player" };
+      player.cards = [cards[0] || "", cards[1] || ""];
+    }
+    const allCards = table.board.filter(Boolean).concat(table.players.flatMap((player) => player.cards.filter(Boolean)));
+    if (allCards.length !== new Set(allCards).size) return { ...current, error: "duplicate-card" };
+    if (JSON.stringify(table) === JSON.stringify(current.table)) return { ...current, error: null };
+    const previous = boardPrefix(current.table.board);
+    // Preserve street snapshots when adding turn/river, after validating the complete selection.
+    if (isBoard && cards.length > previous.length && previous.every((card, index) => cards[index] === card)) {
+      let next = current;
+      for (let index = previous.length; index < cards.length; index += 1) next = setBoardCard(next, index, cards[index]);
+      return next;
+    }
+    return startNewBranch(current, table, null, null);
+  }
   if (type === "SET_BOARD_CARD") {
     const index = Number(action.index);
     if (!Number.isInteger(index) || index < 0 || index > 4) return { ...current, error: "invalid-board-index" };
@@ -407,6 +482,31 @@ function reduceRound(state, action = {}) {
     }
     return startNewBranch(current, null, inputs, null);
   }
+  if (type === "SET_RAKE_RATE") {
+    const value = Number(action.value);
+    if (!Number.isFinite(value) || value < 0 || value > 100) return { ...current, error: "请输入 0–100 的抽水比例" };
+    if (value === asRakeRate(current.inputs.rakeRate)) return { ...current, error: null };
+    if (rakeLocked(current)) return { ...current, error: "发牌后抽水比例已锁定，请重置牌局后修改" };
+    const next = clone(current);
+    next.inputs.rakeRate = value;
+    next.round.branchKey = handKey(next);
+    // Reprice the pots without changing card selections or manual odds tiers.
+    const players = completePlayers(next);
+    const board = boardPrefix(next.table.board);
+    (next.poolMode === "multi" ? getPools(next, players) : []).forEach(pool => {
+      const records = Object.values(next.insuranceByPool[pool.id] || {});
+      if (!records.length) return;
+      const share = pool.amount / Math.max(currentLeaders(next, board, players, pool).length, 1);
+      records.forEach(record => {
+        record.coverage = share;
+        STREET_NAMES.forEach(street => {
+          if (record[street] && record[street].status !== "settled") record[street].buy = cappedStreetBuy(record[street].buy, share, record[street].odds);
+        });
+      });
+    });
+    next.error = null;
+    return next;
+  }
   if (type === "SET_CONTRIBUTION") {
     const inputs = clone(current.inputs);
     const player = String(action.player);
@@ -426,6 +526,42 @@ function reduceRound(state, action = {}) {
     else delete inputs.rankings[player];
     return startNewBranch(current, null, inputs, null);
   }
+  if (type === "SET_ODDS_CONFIG") {
+    const values = Array.isArray(action.values) ? action.values.map(Number) : [];
+    if (values.length !== Core.ODDS.length || values.some((value) => !Number.isFinite(value) || value <= 0)) {
+      return { ...current, error: "invalid-odds-config" };
+    }
+    const next = clone(current);
+    next.oddsConfig = values.slice();
+    Object.values(next.insuranceByPool || {}).forEach((buyers) => Object.values(buyers || {}).forEach((record) => {
+      ["turn", "river"].forEach((street) => {
+        const target = record && record[street];
+        const outs = Number(target && target.outs);
+        if (!target || target.status === "settled" || !Number.isInteger(outs) || outs < 1 || outs > values.length) return;
+        target.odds = values[outs - 1];
+        if (target.oddsOverride) target.oddsOverride = values[outs - 1];
+        target.buy = cappedStreetBuy(target.buy, record.coverage, target.odds);
+      });
+    }));
+    next.error = null;
+    return next;
+  }
+  if (type === "SELECT_OUTS") {
+    const record = current.insuranceByPool[action.poolId] && current.insuranceByPool[action.poolId][action.buyer];
+    const target = record && record[action.street];
+    if (!target || !["current", "estimated"].includes(target.status) || target.outsSource !== "auto") return current;
+    const next = clone(current);
+    const value = next.insuranceByPool[action.poolId][action.buyer][action.street];
+    value.allOutCards = (target.allOutCards || target.outCards || []).slice();
+    value.outCards = selectedCards(value.allOutCards, action.cards);
+    value.selectionApplied = true;
+    value.outs = Core.normalizedOuts(value.outCards.length, 0);
+    value.oddsOverride = 0;
+    value.odds = Core.oddsForOuts(value.outs);
+    value.buy = cappedStreetBuy(value.buy, record.coverage, value.odds);
+    next.error = null;
+    return next;
+  }
   if (type === "EDIT_STREET") {
     const next = clone(current);
     const pool = next.insuranceByPool[action.poolId] || (next.insuranceByPool[action.poolId] = {});
@@ -435,6 +571,12 @@ function reduceRound(state, action = {}) {
     const wasSettled = target.status === "settled";
     const previousBoardKey = target.boardKey;
     if (action.field === "outs") {
+      delete target.allOutCards;
+      delete target.outGroups;
+      delete target.selectionApplied;
+      target.outsSource = "manual";
+      delete target.sourceBoard;
+      delete target.sourceHand;
       if (action.value === "" || action.value === null || action.value === undefined) {
         target.outs = null;
         target.outCards = [];
@@ -461,6 +603,22 @@ function reduceRound(state, action = {}) {
       if (action.value !== "" && Number(action.value) !== 0 && !selected) return { ...current, error: "invalid-odds" };
       target.oddsOverride = selected;
       target.odds = selected || Core.oddsForOuts(target.outs || 0);
+      if (selected) {
+        delete target.allOutCards;
+        delete target.outGroups;
+        delete target.selectionApplied;
+        target.outsSource = "manual";
+        delete target.sourceBoard;
+        delete target.sourceHand;
+        // A manual slider position represents one consistent odds/outs pair.
+        const requestedOuts = Number(action.outs);
+        target.outs = Number.isInteger(requestedOuts) && requestedOuts >= 1 && requestedOuts <= 17
+          && Core.ODDS[requestedOuts - 1] === selected ? requestedOuts : Core.ODDS.indexOf(selected) + 1;
+        target.outCards = [];
+        target.source = "manual";
+        target.boardKey = boardKey(next.table.board);
+        if (wasSettled) target.resolvedStatus = "needsConfirm";
+      }
     } else if (action.field === "status") {
       target.status = ["hit", "safe", "unseen", "estimated", "current", "settled", "needsConfirm"].includes(action.value)
         ? action.value : target.status;
@@ -483,7 +641,7 @@ function reduceRound(state, action = {}) {
     next.error = null;
     return next;
   }
-  if (type === "APPLY_AUTO_OUTS") return applyAutomaticOuts(current, { forceAuto: true });
+  if (type === "APPLY_AUTO_OUTS") return applyAutomaticOuts(current, { forceAuto: true, resetSelection: Boolean(action.resetSelection), poolId: action.poolId, buyer: action.buyer, street: action.street });
   return current;
 }
 
@@ -494,6 +652,7 @@ function statusLabel(status) {
     current: "当前估算",
     settled: "已结算",
     hit: "已爆",
+    uncovered: "未投保牌命中",
     safe: "安全",
     needsConfirm: "待确认",
     notApplicable: "未参与"
@@ -506,19 +665,19 @@ function settledRecordSummary(turn, river, settlement) {
   // A turn hit is terminal.  A stale or manually edited river record may
   // still be marked settled, but its premium was never paid and must not leak
   // into the realized totals.
-  const settledBuy = turnSettled && turn.resolvedStatus === "hit"
+  const settledBuy = turnSettled && ["hit", "uncovered"].includes(turn.resolvedStatus)
     ? settlement.turnBuy
     : (turnSettled ? settlement.turnBuy : 0) + (riverSettled ? settlement.riverBuy : 0);
   let settledReceipt = 0;
   let settledNet = 0;
   const turnResult = turn && turn.resolvedStatus;
   const riverResult = river && river.resolvedStatus;
-  if (turnSettled && turnResult === "hit") {
-    const row = settlement.rows.find((item) => item.key === "turnHit");
+  if (turnSettled && ["hit", "uncovered"].includes(turnResult)) {
+    const row = settlement.rows.find((item) => item.key === (turnResult === "hit" ? "turnHit" : "turnUncovered"));
     settledReceipt = row ? row.receipt : settlement.turnPayout;
     settledNet = row ? row.net : settlement.turnPayout - settlement.stake;
-  } else if (turnSettled && turnResult === "safe" && riverSettled && (riverResult === "hit" || riverResult === "safe")) {
-    const row = settlement.rows.find((item) => item.key === (riverResult === "hit" ? "riverHit" : "bothSafe"));
+  } else if (turnSettled && turnResult === "safe" && riverSettled && ["hit", "safe", "uncovered"].includes(riverResult)) {
+    const row = settlement.rows.find((item) => item.key === (riverResult === "hit" ? "riverHit" : riverResult === "uncovered" ? "riverUncovered" : "bothSafe"));
     if (row) {
       settledReceipt = row.receipt;
       settledNet = row.net;
@@ -538,8 +697,10 @@ function selectInsuranceView(state) {
     ? HandAnalysis.calculateEquityBreakdown(board, players)
     : { byPlayer: {} };
   const multiSide = current.poolMode === "multi"
-    ? Core.buildSidePots(current.inputs.contributions || {}, PLAYER_KEYS)
-    : { returned: 0 };
+    ? rakedSidePots(current.inputs)
+    : { returned: 0, pots: [] };
+  const rakeRate = current.poolMode === "multi" ? asRakeRate(current.inputs.rakeRate) : 0;
+  const totalRake = Number(multiSide.pots.reduce((sum, pot) => sum + pot.rakeAmount, 0).toFixed(2));
   const effective = current.poolMode === "multi"
     ? Core.sideEffectiveStakes(current.inputs.contributions || {}, multiSide.highest, multiSide.returned, PLAYER_KEYS)
     : {};
@@ -591,7 +752,10 @@ function selectInsuranceView(state) {
   const poolViews = pools.map((pool) => {
     const leaders = currentLeaders(current, board, players, pool);
     const records = current.insuranceByPool[pool.id] || {};
-    const buyerKeys = [...new Set([...leaders, ...Object.keys(current.insuranceByPool[pool.id] || {})])];
+    // Show settled purchasers in deal order before the new street's leader.
+    const settledBuyers = (current.round.history || [])
+      .filter((entry) => entry.poolId === pool.id).map((entry) => entry.buyer);
+    const buyerKeys = [...new Set([...settledBuyers, ...leaders, ...Object.keys(records)])];
     const poolSummary = {
       plannedBuy: 0,
       settledBuy: 0,
@@ -609,7 +773,7 @@ function selectInsuranceView(state) {
       const turn = record.turn || emptyStreet(boardKey(current.table.board));
       const river = record.river || emptyStreet(boardKey(current.table.board));
       const stake = current.poolMode === "multi" ? asAmount(pool.stakeByPlayer && pool.stakeByPlayer[buyer]) : asAmount(current.inputs.stake);
-      const coverage = asAmount(record.coverage) || asAmount(pool.amount) / Math.max(leaders.length, 1);
+      const coverage = Number.isFinite(Number(record.coverage)) ? asAmount(record.coverage) : asAmount(pool.amount) / Math.max(leaders.length, 1);
       const turnForSettlement = turn.status === "notApplicable"
         ? { ...turn, outs: 0, buy: 0, status: "safe" }
         : turn.status === "settled" ? { ...turn, status: turn.resolvedStatus || "safe" } : turn;
@@ -617,7 +781,7 @@ function selectInsuranceView(state) {
       const riverForSettlementFinal = river.status === "notApplicable"
         ? { ...river, outs: 0, buy: 0, status: "safe" }
         : riverForSettlement;
-      const settlement = Core.calculateTwoStreetSettlement({
+      const settlement = calculateSettlement({
         coverage,
         stake,
         turn: turnForSettlement,
@@ -625,7 +789,7 @@ function selectInsuranceView(state) {
         firstUnknownCards,
         secondUnknownCards
       });
-      const strategySettlement = (turnBuy, riverBuy) => Core.calculateTwoStreetSettlement({
+      const strategySettlement = (turnBuy, riverBuy) => calculateSettlement({
         coverage,
         stake,
         turn: { ...turnForSettlement, buy: turnBuy },
@@ -669,9 +833,9 @@ function selectInsuranceView(state) {
           player.financial.expectedNet += settlement.expectedNet;
         }
       } else {
-        const terminalTurn = turn.status === "settled" && turn.resolvedStatus === "hit";
+        const terminalTurn = turn.status === "settled" && ["hit", "uncovered"].includes(turn.resolvedStatus);
         const completedRiver = turn.status === "settled" && turn.resolvedStatus === "safe"
-          && river.status === "settled" && (river.resolvedStatus === "hit" || river.resolvedStatus === "safe");
+          && river.status === "settled" && ["hit", "safe", "uncovered"].includes(river.resolvedStatus);
         if (terminalTurn || (completedRiver && turn.resolvedStatus !== "needsConfirm" && river.resolvedStatus !== "needsConfirm")) {
           const settledBuy = settlement.rows.reduce((sum, row) => sum + row.buy, 0);
           const settledReceipt = settlement.rows.reduce((sum, row) => sum + row.receipt, 0);
@@ -703,12 +867,12 @@ function selectInsuranceView(state) {
         buyer,
         recommended: leaders.length === 1 && leaders.includes(buyer),
         historicalOnly: !leaders.includes(buyer),
-        turn: { ...turn, statusLabel: turn.resolvedStatus === "needsConfirm" ? "待确认" : statusLabel(turn.status), refreshLabel: "", payout: settlement.turnPayout },
+        turn: { ...turn, statusLabel: turn.resolvedStatus === "needsConfirm" ? "待确认" : statusLabel(turn.status), refreshLabel: "", payout: turn.resolvedStatus === "uncovered" ? 0 : settlement.turnPayout },
         river: {
           ...river,
           statusLabel: river.resolvedStatus === "needsConfirm" ? "待确认" : statusLabel(river.status),
           refreshLabel: river.status === "estimated" ? "转牌后刷新" : "",
-          payout: settlement.riverPayout
+          payout: river.resolvedStatus === "uncovered" ? 0 : settlement.riverPayout
         },
         settlement: {
           probabilities: settlement.probabilities,
@@ -726,6 +890,8 @@ function selectInsuranceView(state) {
       id: pool.id,
       label: pool.label,
       amount: asAmount(pool.amount),
+      grossAmount: asAmount(pool.grossAmount === undefined ? pool.amount : pool.grossAmount),
+      rakeAmount: Number(pool.rakeAmount) || 0,
       eligible: pool.eligible.slice(),
       leaders,
       buyers,
@@ -738,6 +904,9 @@ function selectInsuranceView(state) {
     branchKey: current.round.branchKey,
     street: board.length <= 3 ? "flop" : board.length === 4 ? "turn" : "river",
     playerCount: allPlayers.length,
+    rakeRate,
+    totalRake,
+    rakeLocked: rakeLocked(current),
     board: current.table.board.slice(),
     players: playerStats,
     pools: poolViews,

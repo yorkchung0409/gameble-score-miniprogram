@@ -67,7 +67,6 @@ Page({
       },
       rooms: {
         activeMahjongIn30Minutes: formatCount(overview.rooms?.activeMahjongIn30Minutes),
-        activePokerIn30Minutes: formatCount(overview.rooms?.activePokerIn30Minutes),
       },
     });
   },

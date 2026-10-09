@@ -2,6 +2,8 @@ const STORAGE_KEY = "gameble-score:insurance-round:v1";
 const LEGACY_STORAGE_KEY = "gameble-score:insurance-draft:v1";
 const Insurance = require("../domain/insurance-engine");
 const Core = require("../poker-core");
+const { maximumBuy } = require("../domain/buy-amount");
+const { GROUPS } = require("../domain/outs-selection");
 
 const PLAYER_KEYS = ["A", "B", "C", "D"];
 
@@ -13,14 +15,14 @@ function finiteAmount(value) {
 function cappedStreetBuy(value, coverage, odds) {
   const multiplier = Number(odds);
   if (!Number.isFinite(multiplier) || multiplier <= 0) return 0;
-  return Math.min(finiteAmount(value), finiteAmount(coverage) / multiplier);
+  return Math.min(Math.ceil(finiteAmount(value)), maximumBuy(coverage, multiplier));
 }
 
 function normalizePreviewStreet(raw) {
   const source = raw && typeof raw === "object" ? raw : {};
   const maxIndex = Math.max(1, Core.ODDS.length);
   const oddsIndex = Math.max(1, Math.min(maxIndex, Math.trunc(Number(source.oddsIndex)) || 1));
-  return { oddsIndex, buy: finiteAmount(source.buy) };
+  return { oddsIndex, buy: Math.ceil(finiteAmount(source.buy)) };
 }
 
 function normalizePresentation(raw) {
@@ -61,8 +63,8 @@ function draftBoardKey(board) {
   return values.join("|");
 }
 
-const CURRENT_STREET_STATUSES = new Set(["unseen", "estimated", "current", "settled", "notApplicable", "needsConfirm", "hit", "safe"]);
-const CURRENT_RESOLVED_STATUSES = new Set(["hit", "safe", "needsConfirm"]);
+const CURRENT_STREET_STATUSES = new Set(["unseen", "estimated", "current", "settled", "notApplicable", "needsConfirm", "hit", "safe", "uncovered"]);
+const CURRENT_RESOLVED_STATUSES = new Set(["hit", "safe", "needsConfirm", "uncovered"]);
 
 function currentStreetFallback(boardKey, status = "unseen") {
   return { outs: null, outCards: [], odds: 0, oddsOverride: 0, buy: 0, status, boardKey, source: "auto" };
@@ -82,18 +84,44 @@ function normalizeCurrentStreet(raw, fallback, boardKey) {
     : outCards.length || (Number.isFinite(fallbackOuts) ? Core.normalizedOuts(fallbackOuts, 0) : null);
   const status = CURRENT_STREET_STATUSES.has(source.status) ? source.status : (base.status || "unseen");
   const rawOddsOverride = Object.prototype.hasOwnProperty.call(source, "oddsOverride") ? source.oddsOverride : base.oddsOverride;
-  const oddsOverride = Core.validInsuranceOdds(rawOddsOverride);
+  const oddsOverride = status === "settled" ? finiteAmount(rawOddsOverride) : Core.validInsuranceOdds(rawOddsOverride);
   const result = {
     ...base,
     outs,
     outCards,
-    odds: oddsOverride || Core.oddsForOuts(outs || 0),
+    odds: status === "settled" && finiteAmount(source.odds) > 0
+      ? finiteAmount(source.odds) : oddsOverride || Core.oddsForOuts(outs || 0),
     oddsOverride,
     buy: finiteAmount(Object.prototype.hasOwnProperty.call(source, "buy") ? source.buy : base.buy),
     status,
     boardKey: typeof source.boardKey === "string" && source.boardKey ? source.boardKey : (base.boardKey || boardKey),
-    source: source.source === "manual" ? "manual" : "auto"
+    source: source.source === "manual" ? "manual" : "auto",
+    outsSource: source.outsSource === "manual" ? "manual"
+      : source.outsSource === "auto" || outCards.length || source.source !== "manual" ? "auto" : "manual",
+    sourceBoard: Array.isArray(source.sourceBoard) ? source.sourceBoard.map(normalizeLegacyCard).filter(Boolean).slice(0, 4) : [],
+    sourceHand: Array.isArray(source.sourceHand) ? source.sourceHand.map(normalizeLegacyCard).filter(Boolean).slice(0, 2) : []
   };
+  if (result.outsSource === "auto") {
+    result.allOutCards = Array.isArray(source.allOutCards)
+      ? [...new Set(source.allOutCards.map(normalizeLegacyCard).filter(Boolean))] : outCards.slice();
+    result.outCards = outCards.filter(card => result.allOutCards.includes(card));
+    result.selectionApplied = Boolean(source.selectionApplied);
+    const rawGroups = Array.isArray(source.outGroups) ? source.outGroups
+      : result.boardKey === base.boardKey ? base.outGroups || [] : [];
+    result.outGroups = GROUPS.map(([key, label]) => ({ key, label,
+      cards: [...new Set(rawGroups.filter(group => group && group.key === key)
+        .flatMap(group => Array.isArray(group.cards) ? group.cards.map(normalizeLegacyCard) : []))]
+        .filter(card => result.allOutCards.includes(card))
+    })).filter(group => group.cards.length);
+    if (result.selectionApplied) {
+      result.outs = Core.normalizedOuts(result.outCards.length, 0);
+      if (result.status !== "settled") result.odds = Core.oddsForOuts(result.outs);
+    }
+  } else {
+    delete result.allOutCards;
+    delete result.outGroups;
+    delete result.selectionApplied;
+  }
   const resolvedStatus = CURRENT_RESOLVED_STATUSES.has(source.resolvedStatus)
     ? source.resolvedStatus
     : CURRENT_RESOLVED_STATUSES.has(base.resolvedStatus) ? base.resolvedStatus : "";
@@ -102,6 +130,9 @@ function normalizeCurrentStreet(raw, fallback, boardKey) {
   if (result.status === "notApplicable") {
     result.outs = null;
     result.outCards = [];
+    delete result.allOutCards;
+    delete result.outGroups;
+    delete result.selectionApplied;
     result.odds = 0;
     result.oddsOverride = 0;
     result.buy = 0;
@@ -357,8 +388,10 @@ function hydrateDraft(raw) {
       players: Array.isArray(table.players) ? table.players : [],
       coverage: inputs.coverage,
       stake: inputs.stake,
+      rakeRate: inputs.rakeRate,
       contributions: inputs.contributions,
-      rankings: inputs.rankings
+      rankings: inputs.rankings,
+      oddsConfig: raw.oddsConfig
     });
     const rawBranchKey = raw.round && typeof raw.round.branchKey === "string" ? raw.round.branchKey : "";
     const rawRoundBoard = raw.round && Array.isArray(raw.round.board) ? raw.round.board : null;
@@ -387,6 +420,10 @@ function hydrateDraft(raw) {
 function hydrateSavedDraft(raw) {
   const source = raw && typeof raw === "object" ? raw : null;
   const isEnvelope = Boolean(source && source.state && typeof source.state === "object");
+  const oddsConfig = (isEnvelope ? source.state : source) && (isEnvelope ? source.state : source).oddsConfig;
+  if (Array.isArray(oddsConfig) && oddsConfig.length === 17 && oddsConfig.every((value) => Number.isFinite(Number(value)) && Number(value) > 0)) {
+    Core.ODDS.splice(0, 17, ...oddsConfig.map(Number));
+  }
   const state = hydrateDraft(isEnvelope ? source.state : raw);
   if (!state) return null;
   return {

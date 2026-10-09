@@ -29,7 +29,6 @@
 .action-button { height: 96rpx; min-height: 96rpx; margin: 0 0 16rpx; border-radius: 10rpx; font-size: 32rpx; font-weight: 700; line-height: 96rpx; }
 .mahjong-button { background: #347258; color: #FFFFFF; }
 .poker-button { background: #80656D; color: #FFFFFF; }
-.insurance-button { background: #8F631E; color: #FFFFFF; }
 .secondary-action { border: 1rpx solid #DACAC0; background: #FFFFFF; color: #2F2925; }
 .sheet-mask { position: fixed; z-index: 1000; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; padding: 48rpx; box-sizing: border-box; background: rgba(41, 50, 53, 0.28); }
 .action-sheet { width: 100%; max-width: 640rpx; box-sizing: border-box; padding: 36rpx 30rpx; border-radius: 12rpx; background: #FFFFFF; }
@@ -38,12 +37,13 @@
 .sheet-actions button { flex: 1; min-width: 0; min-height: 96rpx; margin: 0; border-radius: 8rpx; font-size: 32rpx; font-weight: 700; line-height: 96rpx; }
 .sheet-cancel { background: #F1E8E1; color: #2F2925; }
 .sheet-confirm { color: #FFFFFF; }
-.guide-mask { position: fixed; z-index: 1000; top: 0; right: 0; bottom: 0; left: 0; display: flex; justify-content: center; align-items: center; padding: 28rpx; box-sizing: border-box; background: rgba(41, 50, 53, 0.28); }
-.guide-modal { width: 100%; max-height: 90vh; overflow: hidden; border: 1rpx solid #E8DED4; border-radius: 8rpx; background: #FFFFFF; }
-.guide-header { display: flex; justify-content: space-between; align-items: center; min-height: 82rpx; padding: 0 24rpx; border-bottom: 1rpx solid #E8DED4; }
+.guide-mask { position: fixed; z-index: 1000; top: 0; right: 0; bottom: 0; left: 0; display: flex; justify-content: center; align-items: center; padding: 28rpx; padding-top: calc(28rpx + env(safe-area-inset-top)); padding-bottom: calc(28rpx + env(safe-area-inset-bottom)); box-sizing: border-box; background: rgba(41, 50, 53, 0.28); }
+.guide-modal { display: flex; flex-direction: column; width: 100%; height: 86vh; max-height: 100%; box-sizing: border-box; overflow: hidden; border: 1rpx solid #E8DED4; border-radius: 8rpx; background: #FFFFFF; }
+.guide-header { display: flex; flex-shrink: 0; justify-content: space-between; align-items: center; min-height: 82rpx; padding: 0 24rpx; border-bottom: 1rpx solid #E8DED4; }
 .guide-dialog-title { color: #2F2925; font-size: 34rpx; font-weight: 700; }
 .guide-close { width: 56rpx; height: 56rpx; background: transparent; color: #6E6259; font-size: 48rpx; font-weight: 300; line-height: 52rpx; }
-.guide-body { max-height: 79vh; padding: 20rpx 24rpx; box-sizing: border-box; }
+.guide-body { flex: 1; min-height: 0; height: 0; }
+.guide-content { padding: 20rpx 24rpx 40rpx; padding-bottom: calc(40rpx + env(safe-area-inset-bottom)); }
 .guide-intro { margin-bottom: 20rpx; padding-bottom: 16rpx; border-bottom: 1rpx solid #E8DED4; }
 .guide-intro-text, .guide-intro-warning { display: block; font-size: 25rpx; line-height: 1.45; }
 .guide-intro-text { color: #2F2925; }
@@ -56,3 +56,43 @@
 .guide-bullet { flex: 0 0 14rpx; color: #8F631E; font-size: 28rpx; line-height: 1.3; }
 .guide-bullet-common { color: #8F631E; }
 .action-button, .sheet-actions button { border-radius: 10rpx; }
+
+/* Warm white, gold-brown actions and neutral text. */
+page { background: #FAF9F6; color: #302D29; }
+.page { padding: 32rpx 32rpx 178rpx; color: #302D29; }
+.home-heading { padding: 8rpx 0 36rpx; }
+.home-eyebrow { display: block; color: #746B5F; font-size: 24rpx; letter-spacing: 3rpx; }
+.home-subtitle { display: block; margin-top: 12rpx; color: #827B72; font-size: 24rpx; }
+.page-toolbar { top: 28rpx; }
+.guide-button, .guide-label { color: #746B5F; font-size: 23rpx; }
+.guide-mark { width: 38rpx; height: 38rpx; line-height: 38rpx; font-size: 24rpx; border-color: #E4DED5; color: #746B5F; background: transparent; }
+.entry-section { padding: 28rpx; margin-bottom: 20rpx; border: 1rpx solid #E9E4DC; border-radius: 24rpx; background: #FFFFFF; box-shadow: 0 8rpx 28rpx rgba(67, 52, 29, .035); }
+.entry-meta { display: flex; align-items: center; gap: 12rpx; margin-bottom: 18rpx; }
+.entry-symbol { display: flex; align-items: center; justify-content: center; width: 48rpx; height: 48rpx; border-radius: 12rpx; background: #F5F0E6; color: #8F631E; font-size: 30rpx; font-weight: 700; }
+.entry-caption { flex: 1; min-width: 0; color: #827B72; font-size: 22rpx; line-height: 1.5; }
+.entry-symbol { flex-shrink: 0; }
+.section-heading { margin-bottom: 20rpx; color: #302D29; font-size: 34rpx; }
+.entry-description { display: block; color: #827B72; font-size: 24rpx; line-height: 1.6; margin-bottom: 24rpx; }
+.entry-actions { display: flex; gap: 16rpx; }
+.entry-actions button { flex: 1; min-width: 0; }
+.action-button { height: 84rpx; min-height: 84rpx; margin: 0; border-radius: 14rpx; line-height: 84rpx; font-size: 28rpx; }
+.mahjong-button, .poker-button { background: #8F631E; color: #FFFFFF; }
+.secondary-action { border-color: #E4D8C4; background: #F8F4EC; color: #8F631E; }
+.poker-section { margin-bottom: 20rpx; }
+.mahjong-section { margin-bottom: 0; }
+.mahjong-section .recent-section { margin: 22rpx 0 0; padding: 18rpx 0 0; border: 0; border-top: 1rpx solid #E9E4DC; border-radius: 0; background: transparent; }
+.recent-section { margin-top: 28rpx; padding: 22rpx 24rpx; border-radius: 20rpx; background: #FFFFFF; border: 1rpx solid #E9E4DC; }
+.recent-ledger-section { margin-top: 14rpx; }
+.recent-heading { border: 0; padding-bottom: 10rpx; }
+.recent-title { font-size: 26rpx; color: #302D29; }
+.recent-more { font-size: 23rpx; color: #827B72; padding: 8rpx 0 8rpx 24rpx; }
+.recent-row { border: 0; min-height: 58rpx; }
+.recent-name { font-size: 26rpx; color: #524D45; }
+.recent-enter { color: #8F631E; }
+.recent-empty { color: #827B72; padding-top: 8rpx; }
+.action-sheet, .guide-modal { border-radius: 24rpx; border-color: #E9E4DC; }
+.input, .sheet-input { border-radius: 14rpx; border-color: #E4DED5; background: #FFFFFF; }
+.sheet-cancel { background: #F3F0EB; color: #524D45; }
+.action-button[disabled], .sheet-confirm[disabled] { background: #EDE8DF; color: #9B9285; }
+.service-starting { background: #F5F0E6; color: #8F631E; }
+.insurance-button { border: 1rpx solid #E3CFA7; background: #F1E3C8; color: #76521E; }

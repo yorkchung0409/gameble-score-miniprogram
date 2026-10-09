@@ -23,16 +23,8 @@
     <text class="summary-value {{summary.totalNetClass}}">{{summary.totalNetDisplay}}</text>
   </view>
   <view class="stat-grid">
-    <view class="stat-cell">
-      <text class="stat-label">扑克输赢</text>
-      <text class="stat-value {{summary.pokerNetClass}}">{{summary.pokerNetDisplay}}</text>
-      <text class="stat-note">{{summary.poker.gameCount}} 局 · {{summary.poker.trackedLedgerCount}} 本</text>
-    </view>
-    <view class="stat-cell">
-      <text class="stat-label">麻将输赢</text>
-      <text class="stat-value {{summary.mahjongNetClass}}">{{summary.mahjongNetDisplay}}</text>
-      <text class="stat-note">赢 {{summary.mahjong.winTotal}} / 输 {{summary.mahjong.lossTotal}}</text>
-    </view>
+    <view class="stat-cell" bindtap="openBookkeeping"><text class="stat-label">扑克成绩</text><text class="stat-value {{summary.bookkeepingNetClass}}">{{summary.bookkeepingNetDisplay}}</text><text class="stat-note">{{summary.bookkeepingNote}}</text></view>
+    <view class="stat-cell"><text class="stat-label">麻将成绩</text><text class="stat-value {{summary.mahjongNetClass}}">{{summary.mahjongNetDisplay}}</text></view>
   </view>
   <view class="tea-row"><text>茶费支出</text><text>{{summary.teaFeeDisplay}}</text></view>
 
@@ -42,19 +34,6 @@
   </view>
 
   <view class="section-title"><text>麻将对手战绩</text><view class="section-tools"><text class="section-count">{{summary.mahjong.opponentCount}} 人</text><text wx:if="{{summary.mahjong.opponentCount}}" class="section-action" bindtap="openOpponents">查看</text></view></view>
-
-  <view class="section-title"><text>历史扑克账本</text><view class="section-tools"><text class="section-count">{{summary.poker.ledgerCount}} 本</text><text wx:if="{{pokerLedgers.length}}" class="section-action" data-type="poker" bindtap="openHistory">查看全部</text></view></view>
-  <view wx:if="{{pokerLedgers.length}}" class="history-list">
-    <view wx:for="{{pokerLedgers}}" wx:key="id" class="history-row" data-code="{{item.room.roomCode}}" bindtap="openPokerLedger">
-      <view class="history-main">
-        <text class="history-name">{{item.room.roomName}}</text>
-        <text wx:if="{{item.selfPlayerId}}" class="history-note">本人 {{item.myGameCount}} 局</text>
-        <text wx:else class="history-note">尚未设置本账本中的我</text>
-      </view>
-      <view class="history-side"><text class="{{item.netClass}}">{{item.netDisplay}}</text><text class="history-date">{{item.updatedDisplay}}</text></view>
-    </view>
-  </view>
-  <view wx:else class="empty-state">还没有扑克账本</view>
 
   <view class="section-title"><text>历史麻将房</text><view class="section-tools"><text class="section-count">{{summary.mahjong.roomCount}} 房</text><text wx:if="{{mahjongRooms.length}}" class="section-action" data-type="mahjong" bindtap="openHistory">查看全部</text></view></view>
   <view wx:if="{{mahjongRooms.length}}" class="history-list">

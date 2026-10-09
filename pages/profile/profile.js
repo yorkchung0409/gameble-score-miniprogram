@@ -1,5 +1,5 @@
 const app = getApp();
-const { displayDate, formatNet } = require('../../utils/format');
+const { displayDate, formatNet, toCents } = require('../../utils/format');
 
 function decorateNet(item, key = 'netProfit') {
   const value = Number(item[key] || 0);
@@ -18,7 +18,6 @@ Page({
     needsNickname: false,
     savingProfile: false,
     summary: null,
-    pokerLedgers: [],
     mahjongRooms: [],
     canAccessOperations: false,
     syncWarning: '',
@@ -65,9 +64,6 @@ Page({
         needsNickname: !user.nicknameChangedAt,
         summary: this.decorateSummary(dashboard.summary),
         canAccessOperations: Boolean(dashboard.canAccessOperations),
-        pokerLedgers: dashboard.pokerLedgers
-          .map((ledger) => this.decoratePokerLedger(ledger))
-          .slice(0, 1),
         mahjongRooms: dashboard.mahjongRooms
           .map((room) => this.decorateMahjongRoom(room))
           .slice(0, 1),
@@ -83,25 +79,18 @@ Page({
   },
 
   decorateSummary(summary) {
+    const pokerNet = summary.bookkeeping ? summary.bookkeeping.netProfit : null;
+    const total = toCents(summary.mahjong.netProfit) + toCents(pokerNet || 0);
     return Object.assign({}, summary, {
-      totalNetDisplay: formatNet(summary.totalNetProfit),
-      pokerNetDisplay: formatNet(summary.poker.netProfit),
+      totalNetDisplay: pokerNet === null ? '—' : formatNet(total / 100),
+      totalNetClass: pokerNet === null ? 'neutral' : total > 0 ? 'positive' : total < 0 ? 'negative' : 'neutral',
+      bookkeepingNetDisplay: pokerNet === null ? '待同步' : formatNet(pokerNet),
+      bookkeepingNetClass: Number(pokerNet) > 0 ? 'positive' : Number(pokerNet) < 0 ? 'negative' : 'neutral',
+      bookkeepingNote: pokerNet === null ? '请更新云函数' : `${summary.bookkeeping.gameCount} 场 · 查看记录`,
       mahjongNetDisplay: formatNet(summary.mahjong.netProfit),
-      totalNetClass: Number(summary.totalNetProfit) > 0 ? 'positive' : Number(summary.totalNetProfit) < 0 ? 'negative' : 'neutral',
-      pokerNetClass: Number(summary.poker.netProfit) > 0 ? 'positive' : Number(summary.poker.netProfit) < 0 ? 'negative' : 'neutral',
       mahjongNetClass: Number(summary.mahjong.netProfit) > 0 ? 'positive' : Number(summary.mahjong.netProfit) < 0 ? 'negative' : 'neutral',
       teaFeeDisplay: Number(summary.mahjong.teaFeeTotal || 0).toFixed(2),
     });
-  },
-
-  decoratePokerLedger(ledger) {
-    return Object.assign(
-      {},
-      ledger,
-      { id: ledger.room.id },
-      decorateNet(ledger, 'myNetProfit'),
-      { updatedDisplay: displayDate(ledger.room.updatedAt) },
-    );
   },
 
   decorateMahjongRoom(room) {
@@ -135,19 +124,17 @@ Page({
     }
   },
 
-  openPokerLedger(event) {
-    const roomCode = event.currentTarget.dataset.code;
-    if (roomCode) wx.navigateTo({ url: `/pages/poker/poker?roomCode=${roomCode}` });
-  },
-
   openMahjongRoom(event) {
     const roomCode = event.currentTarget.dataset.code;
     if (roomCode) wx.navigateTo({ url: `/pages/room/room?roomCode=${roomCode}` });
   },
 
-  openHistory(event) {
-    const type = event.currentTarget.dataset.type === 'poker' ? 'poker' : 'mahjong';
-    wx.navigateTo({ url: `/pages/history/history?type=${type}` });
+  openHistory() {
+    wx.navigateTo({ url: '/pages/history/history' });
+  },
+
+  openBookkeeping() {
+    wx.navigateTo({ url: '/bookkeeping-module/pages/bookkeeping/index' });
   },
 
   openOpponents() {
